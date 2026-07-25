@@ -1,0 +1,27 @@
+# ros2
+*/include
+*/build
+*/log
+*/install
+*/CMakeFiles
+.vscode
+
+# Vivado
+vivado/**/*.cache/
+vivado/**/*.runs/
+vivado/**/*.hw/
+vivado/**/*.gen/
+vivado/**/*.sim/
+vivado/**.ip_user_files/
+vivado/**.gen
+vivado/*.xpr.user
+
+# Vitis Platform
+vitis/**/export/
+vitis/**.o
+vitis/**.d
+vitis/**/tempdsa
+
+# Vitis Application
+vitis/**/Debug/
+vitis/**/Release/
