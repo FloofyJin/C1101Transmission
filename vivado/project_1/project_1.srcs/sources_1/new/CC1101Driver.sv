@@ -44,17 +44,9 @@ module CC1101Driver #(
     input  logic       spi_done,
     input  logic [7:0] spi_rx
 );
+    import cc1101_pkg::*;   // CMD_* opcodes, SRES strobe
+
     localparam int POST_CYCLES = (CLK_HZ / 1_000_000) * POSTRES_US;
-
-    localparam logic [7:0] SRES_STROBE = 8'h30;
-
-    localparam logic [2:0]
-        CMD_RESET      = 3'd0,
-        CMD_WRITE_REG  = 3'd1,
-        CMD_READ_REG   = 3'd2,
-        CMD_STROBE     = 3'd3,
-        CMD_WRITE_FIFO = 3'd4,   // reserved (milestone 6)
-        CMD_READ_FIFO  = 3'd5;   // reserved (milestone 7)
 
     typedef enum logic [3:0] {
         S_IDLE,
@@ -115,7 +107,7 @@ module CC1101Driver #(
                     cap <= 1'b0;
                     case (cur_cmd)
                         CMD_RESET: begin
-                            spi_tx <= SRES_STROBE; spi_hold <= 1'b0; dly <= 0;
+                            spi_tx <= SRES; spi_hold <= 1'b0; dly <= 0;
                             ret_state <= S_RST_SETTLE; state <= S_XI;
                         end
                         CMD_WRITE_REG: begin
