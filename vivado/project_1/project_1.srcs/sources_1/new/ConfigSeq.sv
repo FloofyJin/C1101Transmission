@@ -142,16 +142,13 @@ module ConfigSeq #(
                     end
                 end
                 C_RD_W: if (drv_done) begin
-                    if (rd_data != cur_val) begin
-                        config_ok <= 1'b0;         // latch the failure and stop (fail-fast)
+                    if ((rd_data != cur_val) && config_ok) begin
+                        config_ok <= 1'b0;         // first mismatch only
                         fail_addr <= cur_addr;
                         fail_got  <= rd_data;
-                        cstate    <= C_DONE;
-                    end else if (idx == N_CFG-1) begin
-                        cstate <= C_DONE;          // all matched
-                    end else begin
-                        idx <= idx + 8'd1; cstate <= C_RD_I;
                     end
+                    if (idx == N_CFG-1) cstate <= C_DONE;
+                    else begin idx <= idx + 8'd1; cstate <= C_RD_I; end
                 end
 
                 C_DONE: begin done <= 1'b1; busy <= 1'b0; cstate <= C_IDLE; end
