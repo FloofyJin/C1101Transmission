@@ -62,7 +62,7 @@ module SPIMaster #(
 
                     // rising edge
                     if (sclk == 0) begin
-                        shift_rx <= {shift_rx[6:0], miso}; // shifts miso left
+                        shift_rx <= {shift_rx[6:0], miso}; // shifts miso left. READING
                     end
                     // falling edge. set the mosi for next rise
                     else begin
@@ -75,7 +75,7 @@ module SPIMaster #(
                             busy    <= 0;
                             cs_n    <= hold_cs ? 1'b0 : 1'b1; // keep CSn low across a multi-byte transaction
                             sclk    <= 0;
-                            rx_data <= shift_rx; // all 8 bits already shifted in on the rising edges
+                            rx_data <= shift_rx; // all 8 bits already shifted in on the rising edges. READING
                             done    <= 1;
                         end
                     end

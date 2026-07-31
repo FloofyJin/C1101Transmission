@@ -26,11 +26,27 @@ package cc1101_pkg;
         STX   = 8'h35,   // enter TX
         SIDLE = 8'h36,   // go idle
         SFRX  = 8'h3A,   // flush RX FIFO
-        SFTX  = 8'h3B;   // flush TX FIFO
+        SFTX  = 8'h3B,   // flush TX FIFO
+        SNOP  = 8'h3D;   // no-op (just fetch the status byte)
 
-    // Common status-register addresses (driver adds the burst bit on read)
+    // Common status-register addresses (driver adds the burst bit on read).
+    // NOTE these collide with the strobes above on purpose -- same address, the
+    // burst bit is what makes it a read instead of an action. e.g. 0x3B is SFTX
+    // as a strobe and RXBYTES as a status read.
     localparam logic [7:0]
-        PARTNUM_ADDR = 8'h30,
-        VERSION_ADDR = 8'h31;
+        PARTNUM_ADDR   = 8'h30,
+        VERSION_ADDR   = 8'h31,
+        MARCSTATE_ADDR = 8'h35,   // chip's own state machine -- best TX/RX debug net
+        TXBYTES_ADDR   = 8'h3A,
+        RXBYTES_ADDR   = 8'h3B;
+
+    // TX FIFO burst-write header: R/W=0, burst=1, addr=0x3F
+    localparam logic [7:0] TXFIFO_BURST = 8'h7F;
+
+    // MARCSTATE values worth recognising (bits [4:0])
+    localparam logic [4:0]
+        MARC_IDLE = 5'h01,
+        MARC_RX   = 5'h0D,
+        MARC_TX   = 5'h13;
 
 endpackage

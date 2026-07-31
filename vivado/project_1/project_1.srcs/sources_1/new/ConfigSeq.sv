@@ -16,7 +16,13 @@
 //------------------------------------------------------------------------------
 module ConfigSeq #(
     parameter int CLK_HZ     = 125_000_000,
-    parameter int POWERUP_US = 50_000
+    parameter int POWERUP_US = 50_000,
+    // PATABLE = output power. 0x12 is roughly -30 dBm at 433 MHz: the MINIMUM.
+    // Two radios on the same bench are ~10 cm apart, which is far too loud at
+    // full power -- the receiver's front end saturates and the link fails in a
+    // way that looks like a config or logic bug. Turn this up only once the
+    // radios are metres apart. (0x60 ~ 0 dBm, 0xC0 ~ +10 dBm.)
+    parameter logic [7:0] PATABLE_VAL = 8'h12
 )(
     input  logic       clk,
     input  logic       rst,
@@ -43,8 +49,10 @@ module ConfigSeq #(
     localparam logic [7:0] PATABLE_ADDR = 8'h3E;  // not a plain reg -> written, not verified
 
     // ---- config ROM: {addr[15:8], value[7:0]} ----
+    // Stored as one flat constant rather than an unpacked array so that plain
+    // simulators (iverilog) can read it too; entry 0 is the leftmost 16 bits.
     localparam int N_CFG = 36;
-    localparam logic [15:0] CFG [0:N_CFG-1] = '{
+    localparam logic [N_CFG*16-1:0] CFG_FLAT = {
         16'h02_06,  // IOCFG0    GDO0 asserts on sync, deasserts at end of packet
         16'h03_47,  // FIFOTHR
         16'h04_D3,  // SYNC1
@@ -80,7 +88,7 @@ module ConfigSeq #(
         16'h2C_81,  // TEST2
         16'h2D_35,  // TEST1
         16'h2E_09,  // TEST0
-        16'h3E_60   // PATABLE   output power (0x60 ~ 0 dBm); LOWER for bench (radios close)
+        {PATABLE_ADDR, PATABLE_VAL}   // PATABLE  output power -- see parameter above
     };
 
     typedef enum logic [3:0] {
@@ -91,8 +99,9 @@ module ConfigSeq #(
     logic [7:0]  idx;
     logic [31:0] pdly;
 
-    wire [7:0] cur_addr = CFG[idx][15:8];
-    wire [7:0] cur_val  = CFG[idx][7:0];
+    wire [15:0] cur_entry = CFG_FLAT[(N_CFG-1-idx)*16 +: 16];
+    wire [7:0]  cur_addr  = cur_entry[15:8];
+    wire [7:0]  cur_val   = cur_entry[7:0];
 
     always_ff @(posedge clk) begin
         if (rst) begin
