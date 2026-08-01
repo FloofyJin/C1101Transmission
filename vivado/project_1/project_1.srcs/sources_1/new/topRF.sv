@@ -3,21 +3,21 @@
 // topRF  --  Milestone 6: configure both radios, then transmit from radio A
 //
 // Per radio: SPIMaster + CC1101Driver + ConfigSeq. Radio A additionally gets a
-// TxSeq that sends a hardcoded {0xAA, 0x55} packet and watches GDO0.
+// TxSeq that sends a hardcoded {0xAA, 0x55} packet and watches gdo2.
 //
 // ConfigSeq and TxSeq both drive radio A's single command port, so they are
 // muxed on `a_tx_busy`. They never overlap: TxSeq only starts once config is
 // finished, and the config re-run button is ignored while TxSeq is busy.
 //
 // Radio B is configured but otherwise idle -- it becomes the receiver at
-// milestone 7. Its GDO0 is wired and probed now so the pin is proven early.
+// milestone 7. Its gdo2 is wired and probed now so the pin is proven early.
 //
 // Controls:  btn0 = reset          btn1 = send one packet on A
 //            btn2 = re-run config on both radios
 //            sw0  = auto-transmit (a packet every ~200 ms)
 // LEDs:      LD0 = both radios configured OK
-//            LD1 = last transmit completed (GDO0 rose and fell)
-//            LD2 = GDO0 never moved -> transmit timed out (sticky)
+//            LD1 = last transmit completed (gdo2 rose and fell)
+//            LD2 = gdo2 never moved -> transmit timed out (sticky)
 //
 // NOTE: net set changed -> clear debug_ila.xdc and re-run "Set Up Debug".
 //------------------------------------------------------------------------------
@@ -37,39 +37,39 @@ module topRF #(
     output logic cc_mosi,
     input  logic cc_miso,
     output logic cc_csn,
-    input  logic cc_gdo0,
+    input  logic cc_gdo2,
 
     // CC1101 radio B (Pmod JE)
     output logic cc_b_sclk,
     output logic cc_b_mosi,
     input  logic cc_b_miso,
     output logic cc_b_csn,
-    input  logic cc_b_gdo0,
+    input  logic cc_b_gdo2,
 
     output logic led_cfg,      // LD0: both radios configured OK
     output logic led_tx,       // LD1: last packet transmitted OK
-    output logic led_err       // LD2: GDO0 timeout
+    output logic led_err       // LD2: gdo2 timeout
 );
     localparam int SPI_DIV = CLK_HZ / (2 * 1_000_000);   // ~1 MHz SCLK
 
     // ================= CDC synchronizers =================
-    // Every asynchronous chip input gets two flops. GDO0 is the new one here:
+    // Every asynchronous chip input gets two flops. gdo2 is the new one here:
     // it is driven by the CC1101's own clock domain, so sampling it raw would
     // eventually latch a metastable value into the TX state machine.
-    (* mark_debug = "true" *) logic miso_s, gdo0_s;
-    logic miso_m, gdo0_m;
+    (* mark_debug = "true" *) logic miso_s, gdo2_s;
+    logic miso_m, gdo2_m;
     logic txb_m, txb_s, txb_d;
     logic cfgb_m, cfgb_s, cfgb_d;
     logic auto_m, auto_s;
 
-    (* mark_debug = "true" *) logic b_miso_s, b_gdo0_s;
-    logic b_miso_m, b_gdo0_m;
+    (* mark_debug = "true" *) logic b_miso_s, b_gdo2_s;
+    logic b_miso_m, b_gdo2_m;
 
     always_ff @(posedge sysclk) begin
         miso_m   <= cc_miso;    miso_s   <= miso_m;
-        gdo0_m   <= cc_gdo0;    gdo0_s   <= gdo0_m;
+        gdo2_m   <= cc_gdo2;    gdo2_s   <= gdo2_m;
         b_miso_m <= cc_b_miso;  b_miso_s <= b_miso_m;
-        b_gdo0_m <= cc_b_gdo0;  b_gdo0_s <= b_gdo0_m;
+        b_gdo2_m <= cc_b_gdo2;  b_gdo2_s <= b_gdo2_m;
 
         txb_m    <= tx_btn;     txb_s    <= txb_m;   txb_d  <= txb_s;
         cfgb_m   <= cfg_btn;    cfgb_s   <= cfgb_m;  cfgb_d <= cfgb_s;
@@ -77,6 +77,15 @@ module topRF #(
     end
     wire tx_edge  = txb_s  & ~txb_d;
     wire cfg_edge = cfgb_s & ~cfgb_d;
+
+    // CSn mirrored into the ILA: a register read must hold CSn low across all 16
+    // SCLK cycles (header + data). If it lifts in between, the chip reads byte 2
+    // as a new header and answers with the status byte instead of register data.
+    // NOTE: this samples at sysclk, so it only catches glitches wider than 8 ns --
+    // a scope on JC1 is still the authority.
+    (* mark_debug = "true" *) logic csn_dbg, b_csn_dbg;
+    assign csn_dbg   = cc_csn;
+    assign b_csn_dbg = cc_b_csn;
 
     // ================= RADIO A =================
     (* mark_debug = "true" *) logic       spi_start, spi_hold, spi_busy, spi_done;
@@ -107,8 +116,20 @@ module topRF #(
         .spi_done(spi_done), .spi_rx(spi_rx)
     );
 
+    // --- transmit-mission status ---
+    // Declared ahead of cfg_a because its start guard reads a_tx_busy; a forward
+    // reference would quietly become an implicit wire instead.
+    (* mark_debug = "true" *) logic        a_tx_busy, a_tx_done, a_sync_seen;
+    (* mark_debug = "true" *) logic        a_sent_ok, a_timeout;
+    (* mark_debug = "true" *) logic [7:0]  a_txbytes, a_marcstate;
+    (* mark_debug = "true" *) logic [15:0] a_pkt_count;
+
     // --- config mission ---
+    // a_config_ok is only valid while a_cfg_busy is low -- ConfigSeq publishes it
+    // at C_DONE, never mid-sequence. a_cfg_timeout means the driver handshake
+    // stalled and the run was aborted.
     (* mark_debug = "true" *) logic       a_config_ok, a_cfg_done, a_cfg_busy;
+    (* mark_debug = "true" *) logic       a_cfg_timeout;
     (* mark_debug = "true" *) logic [7:0] a_fail_addr, a_fail_got;
     logic       cfg_cmd_valid;
     logic [2:0] cfg_cmd;
@@ -120,14 +141,11 @@ module topRF #(
         .cmd_addr(cfg_cmd_addr), .cmd_data(cfg_cmd_data),
         .drv_done(drv_done), .rd_data(rd_data),
         .config_ok(a_config_ok), .done(a_cfg_done), .busy(a_cfg_busy),
-        .fail_addr(a_fail_addr), .fail_got(a_fail_got)
+        .fail_addr(a_fail_addr), .fail_got(a_fail_got),
+        .timeout(a_cfg_timeout)
     );
 
     // --- transmit mission ---
-    (* mark_debug = "true" *) logic        a_tx_busy, a_tx_done, a_sync_seen;
-    (* mark_debug = "true" *) logic        a_sent_ok, a_timeout;
-    (* mark_debug = "true" *) logic [7:0]  a_txbytes, a_marcstate;
-    (* mark_debug = "true" *) logic [15:0] a_pkt_count;
     logic       tx_cmd_valid;
     logic [2:0] tx_cmd;
     logic [7:0] tx_cmd_addr, tx_cmd_data;
@@ -143,7 +161,7 @@ module topRF #(
         .cmd_addr(tx_cmd_addr), .cmd_data(tx_cmd_data),
         .drv_done(drv_done), .rd_data(rd_data),
         .pl_idx(pl_idx), .pl_byte(pl_byte), .pl_len(pl_len),
-        .gdo0(gdo0_s),
+        .gdo2(gdo2_s),
         .busy(a_tx_busy), .done(a_tx_done),
         .sync_seen(a_sync_seen), .sent_ok(a_sent_ok), .timeout(a_timeout),
         .txbytes(a_txbytes), .marcstate(a_marcstate), .pkt_count(a_pkt_count)
@@ -193,6 +211,7 @@ module topRF #(
     );
 
     (* mark_debug = "true" *) logic       b_config_ok, b_cfg_done, b_cfg_busy;
+    (* mark_debug = "true" *) logic       b_cfg_timeout;
     (* mark_debug = "true" *) logic [7:0] b_fail_addr, b_fail_got;
 
     ConfigSeq #(.CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US)) cfg_b (
@@ -200,7 +219,8 @@ module topRF #(
         .cmd_valid(b_cmd_valid), .cmd(b_cmd), .cmd_addr(b_cmd_addr), .cmd_data(b_cmd_data),
         .drv_done(b_drv_done), .rd_data(b_rd_data),
         .config_ok(b_config_ok), .done(b_cfg_done), .busy(b_cfg_busy),
-        .fail_addr(b_fail_addr), .fail_got(b_fail_got)
+        .fail_addr(b_fail_addr), .fail_got(b_fail_got),
+        .timeout(b_cfg_timeout)
     );
 
     // ================= LEDs =================

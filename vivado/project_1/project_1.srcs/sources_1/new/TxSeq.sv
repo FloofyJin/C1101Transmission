@@ -1,12 +1,12 @@
 `timescale 1ns / 1ps
 //------------------------------------------------------------------------------
-// TxSeq  --  Milestone 6: transmit a hardcoded packet and watch GDO0
+// TxSeq  --  Milestone 6: transmit a hardcoded packet and watch gdo2
 //
 // Drives one CC1101Driver's command interface, exactly like ConfigSeq does, but
 // with the transmit mission instead of the config mission:
 //
 //   SIDLE -> SFTX -> write TX FIFO (len + payload) -> read TXBYTES
-//         -> STX -> read MARCSTATE -> wait GDO0 rise -> wait GDO0 fall -> SIDLE
+//         -> STX -> read MARCSTATE -> wait gdo2 rise -> wait gdo2 fall -> SIDLE
 //
 // The two register reads are pure diagnostics and are the point of this module.
 // If the packet never goes out you need to know WHICH step failed:
@@ -16,9 +16,9 @@
 //   marcstate should read 0x13 (TX), or 0x08-0x0C if caught mid-calibration.
 //             0x01 (IDLE) means STX did not take -- the chip never left idle.
 //
-// GDO0 with IOCFG0 = 0x06 rises when the sync word has gone out and falls at
+// gdo2 with IOCFG0 = 0x06 rises when the sync word has gone out and falls at
 // the end of the packet, so rise-then-fall is the chip telling you the whole
-// frame was transmitted. Both waits are bounded by TIMEOUT_MS: a missing GDO0
+// frame was transmitted. Both waits are bounded by TIMEOUT_MS: a missing gdo2
 // must not wedge the FSM, or the ILA shows you nothing at all.
 //
 // PacketGenerator is deliberately NOT used yet -- milestone 6 wants a KNOWN
@@ -26,7 +26,7 @@
 //------------------------------------------------------------------------------
 module TxSeq #(
     parameter int CLK_HZ     = 125_000_000,
-    parameter int TIMEOUT_MS = 200,          // give up waiting on GDO0
+    parameter int TIMEOUT_MS = 200,          // give up waiting on gdo2
     parameter int REPEAT_MS  = 200           // gap between packets in auto mode
 )(
     input  logic       clk,
@@ -47,15 +47,15 @@ module TxSeq #(
     output logic [7:0] pl_byte,
     output logic [7:0] pl_len,
 
-    // GDO0 from the chip -- MUST already be synchronized to clk
-    input  logic       gdo0,
+    // gdo2 from the chip -- MUST already be synchronized to clk
+    input  logic       gdo2,
 
     // status / ILA
     output logic       busy,
     output logic       done,           // 1-cycle pulse per packet attempt
-    output logic       sync_seen,      // GDO0 rose  -> sync word went on air
+    output logic       sync_seen,      // gdo2 rose  -> sync word went on air
     output logic       sent_ok,        // rose AND fell -> whole packet sent
-    output logic       timeout,        // GDO0 never moved (latched, sticky)
+    output logic       timeout,        // gdo2 never moved (latched, sticky)
     output logic [7:0] txbytes,        // TXBYTES read back after the FIFO write
     output logic [7:0] marcstate,      // MARCSTATE read back after STX
     output logic [15:0] pkt_count      // packets that completed with sent_ok
@@ -89,7 +89,7 @@ module TxSeq #(
     tst_t tstate;
 
     logic [31:0] tmr;
-    logic        gdo0_hi_latch;   // GDO0 went high at some point since STX
+    logic        gdo2_hi_latch;   // gdo2 went high at some point since STX
 
     always_ff @(posedge clk) begin
         if (rst) begin
@@ -100,22 +100,22 @@ module TxSeq #(
             txbytes   <= 8'h00; marcstate <= 8'h00;
             pkt_count <= 16'd0;
             tmr       <= 32'd0;
-            gdo0_hi_latch <= 1'b0;
+            gdo2_hi_latch <= 1'b0;
         end else begin
             cmd_valid <= 1'b0;      // one-cycle-pulse defaults
             done      <= 1'b0;
 
-            // Latch GDO0 high from the moment we strobe STX. At high data rates
+            // Latch gdo2 high from the moment we strobe STX. At high data rates
             // the whole pulse can fit inside one SPI read, and a pulse you did
             // not catch live still proves the packet went out.
-            if (tstate != T_IDLE && tstate != T_GAP && gdo0) gdo0_hi_latch <= 1'b1;
+            if (tstate != T_IDLE && tstate != T_GAP && gdo2) gdo2_hi_latch <= 1'b1;
 
             case (tstate)
                 T_IDLE: if (start || auto_tx) begin
                     busy      <= 1'b1;
                     sync_seen <= 1'b0;
                     sent_ok   <= 1'b0;
-                    gdo0_hi_latch <= 1'b0;
+                    gdo2_hi_latch <= 1'b0;
                     tstate    <= T_SIDLE_I;
                 end
 
@@ -168,9 +168,9 @@ module TxSeq #(
                     tstate    <= T_RISE;
                 end
 
-                // ---- GDO0 rise: sync word is on the air ----
+                // ---- gdo2 rise: sync word is on the air ----
                 T_RISE: begin
-                    if (gdo0 || gdo0_hi_latch) begin
+                    if (gdo2 || gdo2_hi_latch) begin
                         sync_seen <= 1'b1;
                         tmr       <= 32'd0;
                         tstate    <= T_FALL;
@@ -180,9 +180,9 @@ module TxSeq #(
                     end else tmr <= tmr + 32'd1;
                 end
 
-                // ---- GDO0 fall: end of packet ----
+                // ---- gdo2 fall: end of packet ----
                 T_FALL: begin
-                    if (!gdo0) begin
+                    if (!gdo2) begin
                         sent_ok   <= 1'b1;
                         pkt_count <= pkt_count + 16'd1;
                         tstate    <= T_END_I;
@@ -210,7 +210,7 @@ module TxSeq #(
                     if (tmr == GAP_CYCLES-1) begin
                         if (auto_tx) begin
                             sync_seen <= 1'b0; sent_ok <= 1'b0;
-                            gdo0_hi_latch <= 1'b0;
+                            gdo2_hi_latch <= 1'b0;
                             tstate <= T_SIDLE_I;
                         end else begin
                             busy <= 1'b0; tstate <= T_IDLE;

@@ -124,13 +124,13 @@ set_property -dict {PACKAGE_PIN G14 IOSTANDARD LVCMOS33} [get_ports led_err]
 
 
 ##Pmod Header JC  --  CC1101 radio A  (verify wiring against your board)
-## JC1 cc_csn | JC2 cc_mosi | JC3 cc_miso | JC4 cc_sclk | JC7 cc_gdo0 | JC8 free
+## JC1 cc_csn | JC2 cc_mosi | JC3 cc_miso | JC4 cc_sclk | JC7 cc_gdo2 | JC8 free
 ## Readout is via ILA over JTAG, so no UART pin is used.
 set_property -dict {PACKAGE_PIN V15 IOSTANDARD LVCMOS33} [get_ports cc_csn]
 set_property -dict {PACKAGE_PIN W15 IOSTANDARD LVCMOS33} [get_ports cc_mosi]
 set_property -dict {PACKAGE_PIN T11 IOSTANDARD LVCMOS33} [get_ports cc_miso]
 set_property -dict {PACKAGE_PIN T10 IOSTANDARD LVCMOS33} [get_ports cc_sclk]
-set_property -dict {PACKAGE_PIN W14 IOSTANDARD LVCMOS33} [get_ports cc_gdo0]
+set_property -dict {PACKAGE_PIN W14 IOSTANDARD LVCMOS33} [get_ports cc_gdo2]
 #IO_L8P_T1_34 Sch=jc_p[3]  -- JC7, milestone 6 onwards
 #set_property -dict { PACKAGE_PIN T12   IOSTANDARD LVCMOS33     } [get_ports { jc[6] }]; #IO_L2P_T0_34 Sch=jc_p[4]
 #set_property -dict { PACKAGE_PIN U12   IOSTANDARD LVCMOS33     } [get_ports { jc[7] }]; #IO_L2N_T0_34 Sch=jc_n[4]
@@ -148,12 +148,12 @@ set_property -dict {PACKAGE_PIN W14 IOSTANDARD LVCMOS33} [get_ports cc_gdo0]
 
 
 ##Pmod Header JE  --  CC1101 radio B
-## JE1 cc_b_csn | JE2 cc_b_mosi | JE3 cc_b_miso | JE4 cc_b_sclk | JE7 cc_b_gdo0
+## JE1 cc_b_csn | JE2 cc_b_mosi | JE3 cc_b_miso | JE4 cc_b_sclk | JE7 cc_b_gdo2
 set_property -dict {PACKAGE_PIN V12 IOSTANDARD LVCMOS33} [get_ports cc_b_csn]
 set_property -dict {PACKAGE_PIN W16 IOSTANDARD LVCMOS33} [get_ports cc_b_mosi]
 set_property -dict {PACKAGE_PIN J15 IOSTANDARD LVCMOS33} [get_ports cc_b_miso]
 set_property -dict {PACKAGE_PIN H15 IOSTANDARD LVCMOS33} [get_ports cc_b_sclk]
-set_property -dict {PACKAGE_PIN V13 IOSTANDARD LVCMOS33} [get_ports cc_b_gdo0]
+set_property -dict {PACKAGE_PIN V13 IOSTANDARD LVCMOS33} [get_ports cc_b_gdo2]
 #IO_L3N_T0_DQS_34 Sch=je[7]  -- radio B GDO0, unused until milestone 7
 #set_property -dict { PACKAGE_PIN U17   IOSTANDARD LVCMOS33 } [get_ports { je[5] }]; #IO_L9N_T1_DQS_34 Sch=je[8]
 #set_property -dict { PACKAGE_PIN T17   IOSTANDARD LVCMOS33 } [get_ports { je[6] }]; #IO_L20P_T3_34 Sch=je[9]
@@ -199,6 +199,8 @@ set_property -dict {PACKAGE_PIN V13 IOSTANDARD LVCMOS33} [get_ports cc_b_gdo0]
 #set_property PACKAGE_PIN W11 [get_ports {netic19_w11}]; #IO_L18P_T2_13
 #set_property PACKAGE_PIN W9 [get_ports {netic19_w9}]; #IO_L16N_T2_13
 #set_property PACKAGE_PIN Y9 [get_ports {netic19_y9}]; #IO_L14P_T2_SRCC_13
+
+
 
 
 
