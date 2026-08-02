@@ -1,0 +1,98 @@
+10:21:12 DEBUG : Logs will be stored at 'D:/Work/projects/zybo_z7_projects/DDS_workspace/vitis/IDE.log'.
+10:21:15 INFO  : Launching XSCT server: xsct.bat -n  -interactive D:\Work\projects\zybo_z7_projects\DDS_workspace\vitis\temp_xsdb_launch_script.tcl
+10:21:15 INFO  : Registering command handlers for Vitis TCF services
+10:21:17 INFO  : Platform repository initialization has completed.
+10:21:18 INFO  : XSCT server has started successfully.
+10:21:18 INFO  : Successfully done setting XSCT server connection channel  
+10:21:18 INFO  : plnx-install-location is set to ''
+10:21:19 INFO  : Successfully done setting workspace for the tool. 
+10:21:19 INFO  : Successfully done query RDI_DATADIR 
+11:18:10 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender7471693381603221057/RFsender.xsa is not valid Hardware Handoff File
+
+11:18:10 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+11:18:10 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender7471693381603221057/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+11:29:02 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender17146877026868870588/RFsender.xsa is not valid Hardware Handoff File
+
+11:29:02 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+11:29:02 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender17146877026868870588/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+11:30:08 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender9950018544126883092/RFsender.xsa is not valid Hardware Handoff File
+
+11:30:08 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender9950018544126883092/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+11:30:08 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+11:30:10 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender9950018544126883092/RFsender.xsa is not valid Hardware Handoff File
+
+11:30:10 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+11:30:10 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender9950018544126883092/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+11:30:10 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender9950018544126883092/RFsender.xsa is not valid Hardware Handoff File
+
+11:30:10 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+11:30:10 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender9950018544126883092/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+12:56:21 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender5374754875913483732/RFsender.xsa is not valid Hardware Handoff File
+
+12:56:21 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender5374754875913483732/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+12:56:21 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+12:57:18 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender17195824791238639120/RFsender.xsa is not valid Hardware Handoff File
+
+12:57:18 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+12:57:18 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender17195824791238639120/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+13:21:15 ERROR : (XSDB Server)ERROR: [HDF 64-4] C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender5021633571498878967/RFsender.xsa is not valid Hardware Handoff File
+
+13:21:15 ERROR : (XSDB Server)ERROR: [Hsi 55-1451] Error: running open_hw_design.
+
+13:21:15 ERROR : Failed to openhw "C:/Users/Nymph/AppData/Local/Temp/hwspec_RFsender5021633571498878967/RFsender.xsa"
+Reason: ERROR: [Common 17-39] 'hsi::open_hw_design' failed due to earlier errors.
+
+13:23:04 INFO  : Result from executing command 'getProjects': RFsender_platform
+13:23:04 INFO  : Result from executing command 'getPlatforms': xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+13:40:57 INFO  : Result from executing command 'getProjects': RFsender_platform
+13:40:57 INFO  : Result from executing command 'getPlatforms': RFsender_platform|D:/Work/projects/zybo_z7_projects/DDS_workspace/vitis/RFsender_platform/export/RFsender_platform/RFsender_platform.xpfm;xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+13:40:58 INFO  : Checking for BSP changes to sync application flags for project 'RF_hello'...
+14:00:11 DEBUG : Logs will be stored at 'D:/Work/projects/zybo_z7_projects/DD_RF/vitis/IDE.log'.
+14:00:11 INFO  : Launching XSCT server: xsct.bat -n  -interactive D:\Work\projects\zybo_z7_projects\DD_RF\vitis\temp_xsdb_launch_script.tcl
+14:00:14 INFO  : Platform repository initialization has completed.
+14:00:14 INFO  : XSCT server has started successfully.
+14:00:14 INFO  : Successfully done setting XSCT server connection channel  
+14:00:14 INFO  : plnx-install-location is set to ''
+14:00:14 INFO  : Successfully done setting workspace for the tool. 
+14:00:15 INFO  : Successfully done query RDI_DATADIR 
+14:00:15 INFO  : Registering command handlers for Vitis TCF services
+14:00:52 ERROR : Failed to update hardware specification for project 'RFsender_platform'.
+Reason: Failed to execute command 'platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/topSystem.xsa}'. Click on details for more information.
+14:01:09 INFO  : Checking for BSP changes to sync application flags for project 'RF_hello'...
+14:01:09 ERROR : Failed to get platform details for the project 'RF_hello'. Cannot sync application flags.
+14:02:14 INFO  : Result from executing command 'getProjects': RFsender_platform
+14:02:14 INFO  : Result from executing command 'getPlatforms': xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+14:03:52 INFO  : No changes in MSS file content so sources will not be generated.
+14:04:09 INFO  : No changes in MSS file content so sources will not be generated.
+14:04:50 INFO  : No changes in MSS file content so sources will not be generated.
+14:05:23 INFO  : Result from executing command 'getProjects': RFsender_platform
+14:05:23 INFO  : Result from executing command 'getPlatforms': RFsender_platform|D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/export/RFsender_platform/RFsender_platform.xpfm;xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+14:11:13 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_fsbl'...
+14:13:32 INFO  : Generated template bif file for RFsender_fsbl_system
+14:14:36 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_application'...
+14:14:36 INFO  : Updating application flags with new BSP settings...
+14:14:36 INFO  : Successfully updated application flags for project RFsender_application.
+14:29:00 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin
+14:29:00 INFO  : Overwriting existing bif file D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/RFsender_fsbl_system.bif
+14:29:02 INFO  : Bootgen command execution is done.

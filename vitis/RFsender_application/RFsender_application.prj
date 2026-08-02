@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="ASCII"?>
+<sdkproject:SdkProject xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:sdkproject="http://www.xilinx.com/sdkproject" name="RFsender_application" location="D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_application" platform="D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/export/RFsender_platform/RFsender_platform.xpfm" platformUID="xilinx:zybo-z7-10::0.0(custom)" systemProject="RFsender_application_system" sysConfig="RFsender_platform" runtime="C/C++" cpu="standalone_domain" cpuInstance="ps7_cortexa9_0" os="standalone" mssSignature="15cd58cc03800cec2a162b5ce2393d48">
+  <configuration name="Debug" id="xilinx.gnu.armv7.exe.debug.1511773753">
+    <configBuildOptions xsi:type="sdkproject:SdkOptions"/>
+    <lastBuildOptions xsi:type="sdkproject:SdkOptions"/>
+  </configuration>
+  <configuration name="Release" id="xilinx.gnu.armv7.exe.release.1518165344" dirty="true">
+    <configBuildOptions xsi:type="sdkproject:SdkOptions"/>
+  </configuration>
+  <template appTemplateName="hello_world"/>
+</sdkproject:SdkProject>

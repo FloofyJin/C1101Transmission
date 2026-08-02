@@ -15,12 +15,15 @@ vivado/**/*.sim/
 vivado/**.ip_user_files/
 vivado/**.gen
 vivado/*.xpr.user
+vivado/**/sim_scripts/
 
 # Vitis Platform
 vitis/**/export/
 vitis/**.o
 vitis/**.d
 vitis/**/tempdsa
+vitis/**/ps7_cortexa9_0
+vitis/.metadata/
 
 # Vitis Application
 vitis/**/Debug/
