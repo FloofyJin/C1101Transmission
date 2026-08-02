@@ -44,6 +44,15 @@ module CC1101Driver #(
     input  logic [7:0] pl_byte,     // must be combinational from pl_idx
     input  logic [7:0] pl_len,      // payload length -> becomes the CC1101 length byte
 
+    // payload sink for CMD_READ_FIFO -- the mirror image of the write side.
+    // The driver burst-reads rx_len bytes and hands each one up as it arrives;
+    // the controller latches whichever ones it cares about. Again no handshake:
+    // rx_strobe is a 1-cycle pulse and rx_idx/rx_byte are valid alongside it.
+    input  logic [7:0] rx_len,      // how many bytes to burst-read
+    output logic [7:0] rx_idx,      // index of the byte on rx_byte
+    output logic [7:0] rx_byte,     // the byte just read out of the RX FIFO
+    output logic       rx_strobe,   // 1-cycle: rx_idx/rx_byte are valid
+
     input logic [7:0] spi_rx, //data read from spi
     input logic spi_done,
     output logic spi_start,
@@ -58,13 +67,15 @@ localparam POST_RST_CYCLE = (CLK_HZ /1_000_000) * POSTRES_US;
 
 typedef enum logic [3:0] {
     IDLE, RST_S, COMMUNICATE_S, COMMUNICATING_S, RW_DATA_S, WR_DATA_S,
-    FIFO_LEN_S, FIFO_DATA_S, DONE
+    FIFO_LEN_S, FIFO_DATA_S, FIFO_RD_S, DONE
 } state_t;
 
 state_t state;
 state_t rtn_state;
 
 logic is_receiving;
+logic fifo_reading;      // capture spi_rx into rx_byte (RX FIFO data phase only)
+logic [7:0] rx_ptr;      // next RX FIFO byte index to fetch
 
 logic [7:0] saved_cmd_addr, saved_cmd_data;
 
@@ -102,9 +113,15 @@ always @(posedge clk) begin
         dly <= '0;
         is_receiving <= 0;
         pl_idx <= '0;
+        fifo_reading <= 0;
+        rx_ptr <= '0;
+        rx_idx <= '0;
+        rx_byte <= '0;
+        rx_strobe <= 1'b0;
         state <= IDLE;
     end else begin
         spi_start <= 1'b0;
+        rx_strobe <= 1'b0;
         case(state)
             IDLE:
             begin
@@ -113,6 +130,10 @@ always @(posedge clk) begin
                     busy <= 1'b1;
                     saved_cmd_addr <= cmd_addr;
                     saved_cmd_data <= cmd_data;
+                    // Only CMD_READ_FIFO's data phase captures into rx_byte.
+                    // Clearing here stops a previous FIFO read from strobing
+                    // during an unrelated register access.
+                    fifo_reading <= 1'b0;
 
                     case(cmd)
                         CMD_RESET: begin
@@ -163,10 +184,24 @@ always @(posedge clk) begin
                             rtn_state <= FIFO_LEN_S;
                         end
 
+                        CMD_READ_FIFO:
+                        begin
+                            // header 0xFF, then rx_len dummy bytes clocked out to
+                            // shift the FIFO contents in -- one CSn-low window.
+                            // is_receiving stays 0 here: the byte returned during
+                            // the header is the chip status byte, not FIFO data.
+                            spi_tx <= RXFIFO_BURST;
+                            spi_hold <= 1'b1;
+                            is_receiving <= 1'b0;
+                            rx_ptr <= 8'd0;
+                            state <= COMMUNICATE_S;
+                            rtn_state <= FIFO_RD_S;
+                        end
+
                         default:
                         begin
                             // unimplemented opcode: finish instead of hanging
-                            // with busy stuck high (CMD_READ_FIFO, milestone 7)
+                            // with busy stuck high
                             state <= DONE;
                         end
                     endcase
@@ -217,6 +252,18 @@ always @(posedge clk) begin
                 state <= COMMUNICATE_S;
             end
 
+            // Clock out one dummy byte per RX FIFO byte. rx_len is guaranteed
+            // non-zero by the controller (it only issues this after RXBYTES
+            // reads non-zero), so no zero-length guard is needed here.
+            FIFO_RD_S:
+            begin
+                spi_tx    <= 8'h00;
+                spi_hold  <= (rx_ptr == rx_len-8'd1) ? 1'b0 : 1'b1;
+                rtn_state <= (rx_ptr == rx_len-8'd1) ? DONE : FIFO_RD_S;
+                fifo_reading <= 1'b1;
+                state <= COMMUNICATE_S;
+            end
+
             COMMUNICATE_S:
             begin
                 spi_start <= 1'b1;
@@ -228,6 +275,14 @@ always @(posedge clk) begin
                 if(spi_done)begin
                     if(is_receiving) begin
                         rd_data <= spi_rx;
+                    end
+                    if(fifo_reading) begin
+                        // rx_idx carries the index of THIS byte, not the next --
+                        // rx_ptr is the lookahead the FIFO_RD_S test uses.
+                        rx_byte   <= spi_rx;
+                        rx_idx    <= rx_ptr;
+                        rx_strobe <= 1'b1;
+                        rx_ptr    <= rx_ptr + 8'd1;
                     end
                     state <= rtn_state;
                 end

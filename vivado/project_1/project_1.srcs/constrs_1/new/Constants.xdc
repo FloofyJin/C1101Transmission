@@ -28,7 +28,7 @@ set_property -dict {PACKAGE_PIN K19 IOSTANDARD LVCMOS33} [get_ports cfg_btn]
 set_property -dict {PACKAGE_PIN M14 IOSTANDARD LVCMOS33} [get_ports led_cfg]
 set_property -dict {PACKAGE_PIN M15 IOSTANDARD LVCMOS33} [get_ports led_tx]
 set_property -dict {PACKAGE_PIN G14 IOSTANDARD LVCMOS33} [get_ports led_err]
-#set_property -dict { PACKAGE_PIN D18   IOSTANDARD LVCMOS33 } [get_ports { led[3] }]; #IO_L3N_T0_DQS_AD1N_35 Sch=led[3]
+set_property -dict { PACKAGE_PIN D18 IOSTANDARD LVCMOS33 } [get_ports led_rx]; #IO_L3N_T0_DQS_AD1N_35 Sch=led[3]
 
 
 ##RGB LED 5 (Zybo Z7-20 only)
@@ -199,6 +199,7 @@ set_property -dict {PACKAGE_PIN V13 IOSTANDARD LVCMOS33} [get_ports cc_b_gdo2]
 #set_property PACKAGE_PIN W11 [get_ports {netic19_w11}]; #IO_L18P_T2_13
 #set_property PACKAGE_PIN W9 [get_ports {netic19_w9}]; #IO_L16N_T2_13
 #set_property PACKAGE_PIN Y9 [get_ports {netic19_y9}]; #IO_L14P_T2_SRCC_13
+
 
 
 

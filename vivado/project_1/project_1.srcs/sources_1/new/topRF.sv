@@ -48,7 +48,8 @@ module topRF #(
 
     output logic led_cfg,      // LD0: both radios configured OK
     output logic led_tx,       // LD1: last packet transmitted OK
-    output logic led_err       // LD2: gdo2 timeout
+    output logic led_err,      // LD2: gdo2 timeout
+    output logic led_rx        // LD3: radio B received the expected packet (M7)
 );
     localparam int SPI_DIV = CLK_HZ / (2 * 1_000_000);   // ~1 MHz SCLK
 
@@ -112,6 +113,9 @@ module topRF #(
         .cmd_valid(cmd_valid), .cmd(cmd), .cmd_addr(cmd_addr), .cmd_data(cmd_data),
         .rd_data(rd_data), .done(drv_done), .busy(drv_busy),
         .pl_idx(pl_idx), .pl_byte(pl_byte), .pl_len(pl_len),
+        // Radio A transmits only -- it never issues CMD_READ_FIFO, so the RX
+        // burst-read interface is tied off rather than left dangling.
+        .rx_len(8'h00), .rx_idx(), .rx_byte(), .rx_strobe(),
         .spi_start(spi_start), .spi_tx(spi_tx), .spi_hold(spi_hold),
         .spi_done(spi_done), .spi_rx(spi_rx)
     );
@@ -195,37 +199,100 @@ module topRF #(
 
     (* mark_debug = "true" *) logic [2:0] b_cmd;
     logic       b_cmd_valid;
-    logic [7:0] b_cmd_addr, b_cmd_data;
+    (* mark_debug = "true" *) logic [7:0] b_cmd_addr;
+    logic [7:0] b_cmd_data;
     (* mark_debug = "true" *) logic [7:0] b_rd_data;
     logic       b_drv_done, b_drv_busy;
     logic [7:0] b_pl_idx;
+    logic [7:0] b_rx_len, b_rx_idx, b_rx_byte;
+    logic       b_rx_strobe;
 
-    // Radio B never gets CMD_WRITE_FIFO in this build (it receives at M7).
+    // Radio B never gets CMD_WRITE_FIFO in this build -- it only receives.
     CC1101Driver #(.CLK_HZ(CLK_HZ)) drv_b (
         .clk(sysclk), .rst(rst),
         .cmd_valid(b_cmd_valid), .cmd(b_cmd), .cmd_addr(b_cmd_addr), .cmd_data(b_cmd_data),
         .rd_data(b_rd_data), .done(b_drv_done), .busy(b_drv_busy),
         .pl_idx(b_pl_idx), .pl_byte(8'h00), .pl_len(8'h00),
+        .rx_len(b_rx_len), .rx_idx(b_rx_idx), .rx_byte(b_rx_byte),
+        .rx_strobe(b_rx_strobe),
         .spi_start(b_spi_start), .spi_tx(b_spi_tx), .spi_hold(b_spi_hold),
         .spi_done(b_spi_done), .spi_rx(b_spi_rx)
     );
 
+    // --- receive-mission status (declared ahead of cfg_b, whose start guard
+    //     reads b_rx_busy) ---
+    (* mark_debug = "true" *) logic        b_rx_busy, b_rx_done;
+    (* mark_debug = "true" *) logic        b_pkt_ok, b_crc_ok, b_overflow, b_rx_timeout;
+    (* mark_debug = "true" *) logic [7:0]  b_rxbytes, b_len_byte;
+    (* mark_debug = "true" *) logic [7:0]  b_b0, b_b1, b_rssi;
+    (* mark_debug = "true" *) logic [6:0]  b_lqi;
+    (* mark_debug = "true" *) logic [15:0] b_rx_count, b_err_count;
+
+    // --- config mission ---
     (* mark_debug = "true" *) logic       b_config_ok, b_cfg_done, b_cfg_busy;
     (* mark_debug = "true" *) logic       b_cfg_timeout;
     (* mark_debug = "true" *) logic [7:0] b_fail_addr, b_fail_value;
+    logic       b_cfg_cmd_valid;
+    logic [2:0] b_cfg_cmd;
+    logic [7:0] b_cfg_cmd_addr, b_cfg_cmd_data;
 
     ConfigSeq #(.CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US)) cfg_b (
-        .clk(sysclk), .rst(rst), .start(cfg_edge),
-        .cmd_valid(b_cmd_valid), .cmd(b_cmd), .cmd_addr(b_cmd_addr), .cmd_data(b_cmd_data),
+        .clk(sysclk), .rst(rst), .start(cfg_edge & ~b_rx_busy),
+        .cmd_valid(b_cfg_cmd_valid), .cmd(b_cfg_cmd),
+        .cmd_addr(b_cfg_cmd_addr), .cmd_data(b_cfg_cmd_data),
         .drv_done(b_drv_done), .rd_data(b_rd_data),
         .config_ok(b_config_ok), .done(b_cfg_done), .busy(b_cfg_busy),
         .fail_addr(b_fail_addr), .fail_value(b_fail_value),
         .timeout(b_cfg_timeout)
     );
 
+    logic       b_rx_cmd_valid;
+    logic [2:0] b_rx_cmd;
+    logic [7:0] b_rx_cmd_addr, b_rx_cmd_data;
+
+    RxSeq #(.CLK_HZ(CLK_HZ)) rx_b (
+        .clk(sysclk), .rst(rst),
+        .enable(b_config_ok), .cfg_busy(b_cfg_busy),
+        .cmd_valid(b_rx_cmd_valid), .cmd(b_rx_cmd),
+        .cmd_addr(b_rx_cmd_addr), .cmd_data(b_rx_cmd_data),
+        .drv_done(b_drv_done), .rd_data(b_rd_data),
+        .rx_len(b_rx_len), .rx_idx(b_rx_idx), .rx_byte(b_rx_byte),
+        .rx_strobe(b_rx_strobe),
+        .gdo2(b_gdo2_s),
+        .busy(b_rx_busy), .done(b_rx_done),
+        .pkt_ok(b_pkt_ok), .crc_ok(b_crc_ok),
+        .overflow(b_overflow), .timeout(b_rx_timeout),
+        .rxbytes(b_rxbytes), .len_byte(b_len_byte),
+        .b0(b_b0), .b1(b_b1), .rssi(b_rssi), .lqi(b_lqi),
+        .rx_count(b_rx_count), .err_count(b_err_count)
+    );
+
+    // --- who owns radio B's command bus ---
+    // RxSeq drops b_rx_busy while merely listening, so ConfigSeq can still take
+    // the bus for a re-run; RxSeq stands down and re-arms when that finishes.
+    always_comb begin
+        if (b_rx_busy) begin
+            b_cmd_valid = b_rx_cmd_valid;
+            b_cmd       = b_rx_cmd;
+            b_cmd_addr  = b_rx_cmd_addr;
+            b_cmd_data  = b_rx_cmd_data;
+        end else begin
+            b_cmd_valid = b_cfg_cmd_valid;
+            b_cmd       = b_cfg_cmd;
+            b_cmd_addr  = b_cfg_cmd_addr;
+            b_cmd_data  = b_cfg_cmd_data;
+        end
+    end
+
     // ================= LEDs =================
     assign led_cfg = a_config_ok & b_config_ok;
     assign led_tx  = a_sent_ok;
     assign led_err = a_timeout;
+    // LD3: the milestone-7 light. Driven from the COUNTER, not from b_pkt_ok --
+    // RxSeq clears pkt_ok when it re-arms, roughly 30 us after each packet, so
+    // b_pkt_ok is a per-packet verdict for the ILA to sample at b_rx_done, not
+    // something an eye can see. rx_count is sticky: first good packet lights it
+    // and it stays lit.
+    assign led_rx  = |b_rx_count;
 
 endmodule

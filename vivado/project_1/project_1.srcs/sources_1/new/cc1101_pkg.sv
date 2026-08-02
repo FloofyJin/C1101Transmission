@@ -16,8 +16,8 @@ package cc1101_pkg;
         CMD_WRITE_REG  = 3'd1,
         CMD_READ_REG   = 3'd2,
         CMD_STROBE     = 3'd3,
-        CMD_WRITE_FIFO = 3'd4,   // reserved (milestone 6)
-        CMD_READ_FIFO  = 3'd5;   // reserved (milestone 7)
+        CMD_WRITE_FIFO = 3'd4,
+        CMD_READ_FIFO  = 3'd5;
 
     // CC1101 command strobes (single-byte fire-and-forget commands)
     localparam logic [7:0]
@@ -42,6 +42,8 @@ package cc1101_pkg;
 
     // TX FIFO burst-write header: R/W=0, burst=1, addr=0x3F
     localparam logic [7:0] TXFIFO_BURST = 8'h7F;
+    // RX FIFO burst-read header:  R/W=1, burst=1, addr=0x3F
+    localparam logic [7:0] RXFIFO_BURST = 8'hFF;
 
     // MARCSTATE values worth recognising (bits [4:0])
     localparam logic [4:0]
