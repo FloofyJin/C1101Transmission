@@ -22,6 +22,7 @@ module ConfigSeq #(
     // full power -- the receiver's front end saturates and the link fails in a
     // way that looks like a config or logic bug. Turn this up only once the
     // radios are metres apart. (0x60 ~ 0 dBm, 0xC0 ~ +10 dBm.)
+    // PATABLE = Power Amplifiable Table
     parameter logic [7:0] PATABLE_VAL = 8'h12,
     // Longest legitimate wait on drv_done is CMD_RESET, which includes the
     // driver's 1 ms post-SRES settle. 50 ms is ~50x that -- long enough never to
@@ -32,23 +33,19 @@ module ConfigSeq #(
     input  logic       rst,
     input  logic       start,         // re-run (auto-runs once after reset)
 
-    // to CC1101Driver command interface
-    output logic       cmd_valid,
     output logic [2:0] cmd,
+    output logic cmd_valid,
     output logic [7:0] cmd_addr,
     output logic [7:0] cmd_data,
-    input  logic       drv_done,
-    input  logic [7:0] rd_data,
+    input logic[7:0]  rd_data,
 
-    // status
-    // config_ok is only published at C_DONE, so it is meaningful ONLY while
-    // busy is low. It never reads high mid-sequence.
-    output logic       config_ok,     // 1 = all read-backs matched
-    output logic       done,          // 1-cycle pulse when sequence completes
-    output logic       busy,
-    output logic [7:0] fail_addr,     // register of first mismatch (0 if none)
-    output logic [7:0] fail_got,      // value read at the mismatch
-    output logic       timeout        // sticky: drv_done never arrived -> aborted
+    output logic busy,
+    output logic [7:0] fail_addr,
+    output logic [7:0] fail_value,
+    output logic config_ok,
+    output logic done,
+    output logic timeout,
+    input logic drv_done
 );
     import cc1101_pkg::*;   // CMD_* opcodes
 
@@ -107,124 +104,184 @@ module ConfigSeq #(
     };
 
     typedef enum logic [3:0] {
-        C_PWR, C_RST_I, C_RST_W, C_WR_I, C_WR_W, C_RD_I, C_RD_W, C_DONE, C_IDLE
-    } cst_t;
-    cst_t cstate;
+        PWR_S, RST_S, RST_WS, WR_S, WR_WS, RD_S, RD_WS, DONE_S, IDLE_S
+    } cstate_t;
+    cstate_t cstate;
 
-    logic [7:0]  idx;
-    logic [31:0] pdly;
-    logic [31:0] wdt;        // watchdog on every drv_done handshake
-    logic        verify_ok;  // running verdict; copied to config_ok at C_DONE
+    logic [31:0] dly; // reset delay
+    logic [31:0] wdt; //watchdog
 
-    // idx never exceeds N_CFG-1 in practice, but synthesis still has to build the
-    // mux for all 256 values of an 8-bit index, and (N_CFG-1-idx) goes negative
-    // for idx > 35 -- that out-of-range select into CFG_FLAT crashes Vivado
-    // 2024.2 outright (EXCEPTION_ACCESS_VIOLATION). Clamp so the select is
-    // always in range.
-    wire [5:0]  idx_c     = (idx < N_CFG) ? idx[5:0] : 6'd0;
-    wire [15:0] cur_entry = CFG_FLAT[(N_CFG-1-idx_c)*16 +: 16];
-    wire [7:0]  cur_addr  = cur_entry[15:8];
-    wire [7:0]  cur_val   = cur_entry[7:0];
+    logic verify_ok;
+
+    logic [31:0] idx;
+    wire [5:0] idx_c = (idx < N_CFG) ? idx[5:0] : 6'b0;
+    // MUST be wire, not logic. `logic x = expr;` at module scope is a variable
+    // declaration initializer -- evaluated once at time zero, like an initial
+    // block -- so these would freeze at entry 0 and never track idx. Only nets
+    // get continuous-assignment semantics.
+    wire [7:0] curr_addr  = CFG_FLAT[(N_CFG-idx_c)*16-1 -:8];
+    wire [7:0] curr_value = CFG_FLAT[(N_CFG-1-idx_c)*16 +:8];
 
     always_ff @(posedge clk) begin
-        if (rst) begin
-            cstate    <= C_PWR;
-            idx       <= 8'd0;
-            pdly      <= 0;
-            wdt       <= 0;
-            cmd_valid <= 1'b0; cmd <= 3'd0; cmd_addr <= 8'h00; cmd_data <= 8'h00;
-            config_ok <= 1'b0; done <= 1'b0; busy <= 1'b0;
-            verify_ok <= 1'b0; timeout <= 1'b0;
-            fail_addr <= 8'h00; fail_got <= 8'h00;
+        if(rst)begin
+            cstate     <= PWR_S;
+            dly        <= '0;
+            wdt        <= '0;
+            idx        <= '0;
+            verify_ok  <= 1'b0;
+            config_ok  <= 1'b0;
+            timeout    <= 1'b0;
+            busy       <= 1'b0;
+            done       <= 1'b0;
+            cmd_valid  <= 1'b0;
+            cmd        <= 3'd0;
+            cmd_addr   <= 8'h00;
+            cmd_data   <= 8'h00;
+            fail_addr  <= 8'h00;
+            fail_value <= 8'h00;
         end else begin
-            cmd_valid <= 1'b0;   // one-cycle-pulse defaults
-            done      <= 1'b0;
-
+            cmd_valid <= 1'b0;
+            done <= 1'b0;
             case (cstate)
-                // settle after config, then reset the chip
-                C_PWR: begin
+                PWR_S: // POWER STATE
+                begin
+                    wdt <= '0;
                     busy <= 1'b1;
-                    if (pdly == PWR_CYCLES-1) begin pdly <= 0; cstate <= C_RST_I; end
-                    else pdly <= pdly + 1;
-                end
-
-                C_RST_I: begin cmd_valid <= 1'b1; cmd <= CMD_RESET; wdt <= 0; cstate <= C_RST_W; end // send reset signal to CC1101
-                C_RST_W: begin // once reset, go to write config
-                    if (drv_done) begin idx <= 8'd0; cstate <= C_WR_I; end
-                    else if (wdt == WDT_CYCLES-1) begin
-                        timeout <= 1'b1; verify_ok <= 1'b0; cstate <= C_DONE;
-                    end else wdt <= wdt + 32'd1;
-                end
-
-                // ---- write every config entry ----
-                C_WR_I: begin
-                    cmd_valid <= 1'b1; cmd <= CMD_WRITE_REG;
-                    cmd_addr  <= cur_addr; cmd_data <= cur_val;
-                    wdt <= 0; cstate <= C_WR_W;
-                end
-                C_WR_W: begin
-                    if (drv_done) begin
-                        if (idx == N_CFG-1) begin
-                            // Writes are done, so the verdict starts optimistic --
-                            // but this is verify_ok, NOT config_ok. Nothing is
-                            // published to the outside world until C_DONE.
-                            idx <= 8'd0; verify_ok <= 1'b1; cstate <= C_RD_I;
-                        end else begin
-                            idx <= idx + 8'd1; cstate <= C_WR_I;
-                        end
-                    end else if (wdt == WDT_CYCLES-1) begin
-                        timeout <= 1'b1; verify_ok <= 1'b0;
-                        fail_addr <= cur_addr; fail_got <= 8'h00;
-                        cstate <= C_DONE;
-                    end else wdt <= wdt + 32'd1;
-                end
-
-                // ---- read back + verify (skip PATABLE, not a plain register) ----
-                C_RD_I: begin
-                    if (cur_addr == PATABLE_ADDR) begin
-                        if (idx == N_CFG-1) cstate <= C_DONE;
-                        else begin idx <= idx + 8'd1; cstate <= C_RD_I; end
+                    if(dly == PWR_CYCLES - 1) begin
+                        dly <= '0;          // so a later reset still gets the full wait
+                        cstate <= RST_S;
                     end else begin
-                        cmd_valid <= 1'b1; cmd <= CMD_READ_REG; cmd_addr <= cur_addr;
-                        wdt <= 0; cstate <= C_RD_W;
+                        dly <= dly + 1'b1;
                     end
                 end
-                C_RD_W: begin
-                    if (drv_done) begin
-                        if ((rd_data != cur_val) && verify_ok) begin
-                            verify_ok <= 1'b0;         // first mismatch only
-                            fail_addr <= cur_addr;
-                            fail_got  <= rd_data;
+
+                RST_S: // RESET STATE
+                begin
+                    cmd <= CMD_RESET;
+                    cmd_valid <= 1'b1;
+                    wdt <= 1'b0;
+                    idx <= '0;
+                    verify_ok <= 1'b1;
+                    cstate <= RST_WS;
+                end
+
+                RST_WS: // RESET WAIT STATE
+                begin
+                    if(drv_done)begin
+                        cstate <= WR_S;
+                    end else begin
+                        if(wdt == WDT_CYCLES) begin
+                            fail_addr <= curr_addr;
+                            fail_value <= curr_value;
+                            verify_ok <= 1'b0;
+                            cstate <= DONE_S;
+                        end else begin
+                            wdt <= wdt + 1'b1;
                         end
-                        if (idx == N_CFG-1) cstate <= C_DONE;
-                        else begin idx <= idx + 8'd1; cstate <= C_RD_I; end
-                    end else if (wdt == WDT_CYCLES-1) begin
-                        timeout <= 1'b1; verify_ok <= 1'b0;
-                        fail_addr <= cur_addr; fail_got <= 8'h00;
-                        cstate <= C_DONE;
-                    end else wdt <= wdt + 32'd1;
+                    end
                 end
 
-                // The single place config_ok is published. Reaching here via a
-                // timeout carries verify_ok = 0, so a hung run reports failure
-                // instead of freezing with a stale "OK" on the ILA.
-                C_DONE: begin
+                WR_S: // WRITE STATE
+                begin
+                    cmd_valid <= 1'b1;
+                    cmd_addr <= curr_addr;
+                    cmd_data <= curr_value;
+                    cmd <= CMD_WRITE_REG;
+                    cstate <= WR_WS;
+                    wdt <= 1'b0;
+                end
+
+                WR_WS: // WRITE WAIT STATE
+                begin
+                    if(drv_done)begin
+                        if(idx == N_CFG-1)begin
+                            idx <= '0;
+                            cstate <= RD_S;
+                        end else begin
+                            idx <= idx + 1'b1;
+                            cstate <= WR_S;
+                        end
+                    end else begin
+                        if(wdt == WDT_CYCLES) begin
+                            fail_addr <= curr_addr;
+                            fail_value <= curr_value;
+                            verify_ok <= 1'b0;
+                            timeout <= 1'b1;
+                            cstate <= DONE_S;
+                        end else begin
+                            wdt <= wdt + 1'b1;
+                        end
+                    end
+                end
+
+                RD_S: // READ STATE
+                begin
+                    // Test curr_addr (the current ROM entry), NOT cmd_addr -- that
+                    // is the last address handed to the driver, which still holds
+                    // PATABLE from the write phase and would end the verify before
+                    // it ran a single read. The idx guard means termination does
+                    // not depend on PATABLE happening to be the last ROM entry.
+                    if (idx >= N_CFG || curr_addr == PATABLE_ADDR)begin
+                        cstate <= DONE_S;
+                    end else begin
+                        cmd_valid <= 1'b1;
+                        cmd_addr <= curr_addr;
+                        cmd <= CMD_READ_REG;
+                        wdt <= '0;
+                        cstate <= RD_WS;
+                    end
+                end
+
+                RD_WS: // READ WAIT STATE
+                begin
+                    if(drv_done)begin
+                        if(rd_data != curr_value && verify_ok) begin
+                            fail_addr <= curr_addr;
+                            fail_value <= rd_data;
+                            verify_ok <= 1'b0;
+                        end
+                        idx <= idx + 1'b1;
+                        cstate <= RD_S;
+                    end else begin
+                        if(wdt == WDT_CYCLES) begin
+                            fail_addr <= curr_addr;
+                            fail_value <= curr_value;
+                            verify_ok <= 1'b0;
+                            cstate <= DONE_S;
+                            timeout <= 1'b1;
+                        end else begin
+                            wdt <= wdt + 1'b1;
+                        end
+                    end
+                end
+
+                DONE_S: // DONE STATE -- the only place config_ok is published
+                begin
                     config_ok <= verify_ok;
-                    done <= 1'b1; busy <= 1'b0; cstate <= C_IDLE;
+                    done <= 1'b1;
+                    busy <= 1'b0;
+                    cstate <= IDLE_S;
                 end
 
-                C_IDLE: if (start) begin
-                    // Invalidate the previous run's verdict up front, so a re-run
-                    // in progress can never be mistaken for a passing one.
-                    idx       <= 8'd0;
-                    busy      <= 1'b1;
-                    config_ok <= 1'b0; verify_ok <= 1'b0; timeout <= 1'b0;
-                    fail_addr <= 8'h00; fail_got <= 8'h00;
-                    cstate    <= C_RST_I;
+                IDLE_S: // IDLE STATE -- wait for a re-run request
+                begin
+                    if(start) begin
+                        // Invalidate the previous run's verdict up front so a
+                        // run in progress can never look like a passing one.
+                        config_ok <= 1'b0;
+                        timeout <= 1'b0;
+                        fail_addr <= 8'h00;
+                        fail_value <= 8'h00;
+                        cstate <= RST_S;
+                        busy <= 1'b1;
+                    end
                 end
 
-                default: cstate <= C_PWR;
+                // 9 states in a 4-bit enum leaves 7 illegal encodings. Without
+                // this, landing in one would hang the FSM permanently.
+                default: cstate <= PWR_S;
             endcase
         end
     end
+
 endmodule

@@ -130,7 +130,7 @@ module topRF #(
     // stalled and the run was aborted.
     (* mark_debug = "true" *) logic       a_config_ok, a_cfg_done, a_cfg_busy;
     (* mark_debug = "true" *) logic       a_cfg_timeout;
-    (* mark_debug = "true" *) logic [7:0] a_fail_addr, a_fail_got;
+    (* mark_debug = "true" *) logic [7:0] a_fail_addr, a_fail_value;
     logic       cfg_cmd_valid;
     logic [2:0] cfg_cmd;
     logic [7:0] cfg_cmd_addr, cfg_cmd_data;
@@ -141,7 +141,7 @@ module topRF #(
         .cmd_addr(cfg_cmd_addr), .cmd_data(cfg_cmd_data),
         .drv_done(drv_done), .rd_data(rd_data),
         .config_ok(a_config_ok), .done(a_cfg_done), .busy(a_cfg_busy),
-        .fail_addr(a_fail_addr), .fail_got(a_fail_got),
+        .fail_addr(a_fail_addr), .fail_value(a_fail_value),
         .timeout(a_cfg_timeout)
     );
 
@@ -212,14 +212,14 @@ module topRF #(
 
     (* mark_debug = "true" *) logic       b_config_ok, b_cfg_done, b_cfg_busy;
     (* mark_debug = "true" *) logic       b_cfg_timeout;
-    (* mark_debug = "true" *) logic [7:0] b_fail_addr, b_fail_got;
+    (* mark_debug = "true" *) logic [7:0] b_fail_addr, b_fail_value;
 
     ConfigSeq #(.CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US)) cfg_b (
         .clk(sysclk), .rst(rst), .start(cfg_edge),
         .cmd_valid(b_cmd_valid), .cmd(b_cmd), .cmd_addr(b_cmd_addr), .cmd_data(b_cmd_data),
         .drv_done(b_drv_done), .rd_data(b_rd_data),
         .config_ok(b_config_ok), .done(b_cfg_done), .busy(b_cfg_busy),
-        .fail_addr(b_fail_addr), .fail_got(b_fail_got),
+        .fail_addr(b_fail_addr), .fail_value(b_fail_value),
         .timeout(b_cfg_timeout)
     );
 
