@@ -65,14 +65,28 @@ module TxSeq #(
     localparam int TO_CYCLES  = (CLK_HZ / 1000) * TIMEOUT_MS;
     localparam int GAP_CYCLES = (CLK_HZ / 1000) * REPEAT_MS;
 
-    // ---- the packet ----
-    // Flat constant, byte 0 leftmost (same reason as ConfigSeq's ROM).
-    localparam int PL_N = 2;
-    localparam logic [PL_N*8-1:0] PAYLOAD = {8'hAA, 8'h55};
+    // ---- the packet:  {0xAA, 0x55, seq} ----
+    // The two marker bytes are kept from milestone 6 so an independent receiver
+    // can tell real data from noise at a glance, and so RxSeq's existing b0/b1
+    // check still applies. `seq` is what makes loss measurable: a receiver that
+    // sees ... 41 42 43 45 ... knows packet 44 never arrived. Random or constant
+    // payloads make a dropped packet and a good one look identical.
+    localparam int PL_N = 3;
 
-    assign pl_len  = PL_N[7:0];
-    assign pl_byte = (pl_idx < PL_N[7:0]) ? PAYLOAD[(PL_N-1-pl_idx)*8 +: 8]
-                                          : 8'h00;
+    logic [7:0] seq;    // increments once per transmit ATTEMPT (see T_DONE)
+
+    assign pl_len = PL_N[7:0];
+
+    // A small mux rather than a packed-constant part-select. One fewer
+    // out-of-range index to get wrong, and seq is a register, not a constant.
+    always_comb begin
+        case (pl_idx)
+            8'd0:    pl_byte = 8'hAA;
+            8'd1:    pl_byte = 8'h55;
+            8'd2:    pl_byte = seq;
+            default: pl_byte = 8'h00;
+        endcase
+    end
 
     typedef enum logic [4:0] {
         T_IDLE,
@@ -99,6 +113,7 @@ module TxSeq #(
             sync_seen <= 1'b0; sent_ok <= 1'b0; timeout <= 1'b0;
             txbytes   <= 8'h00; marcstate <= 8'h00;
             pkt_count <= 16'd0;
+            seq       <= 8'd0;
             tmr       <= 32'd0;
             gdo2_hi_latch <= 1'b0;
         end else begin
@@ -201,6 +216,10 @@ module TxSeq #(
 
                 T_DONE: begin
                     done <= 1'b1;
+                    // Increment per ATTEMPT, not per success. A packet that went
+                    // out and was lost on air must still consume a sequence
+                    // number, or the receiver cannot see the gap.
+                    seq  <= seq + 8'd1;
                     tmr  <= 32'd0;
                     if (auto_tx) tstate <= T_GAP;
                     else begin busy <= 1'b0; tstate <= T_IDLE; end

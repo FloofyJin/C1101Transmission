@@ -224,7 +224,9 @@ module topRF #(
     (* mark_debug = "true" *) logic        b_rx_busy, b_rx_done;
     (* mark_debug = "true" *) logic        b_pkt_ok, b_crc_ok, b_overflow, b_rx_timeout;
     (* mark_debug = "true" *) logic [7:0]  b_rxbytes, b_len_byte;
-    (* mark_debug = "true" *) logic [7:0]  b_b0, b_b1, b_rssi;
+    (* mark_debug = "true" *) logic [7:0]  b_b0, b_b1, b_b2, b_rssi;
+    (* mark_debug = "true" *) logic [7:0]  b_last_seq;
+    (* mark_debug = "true" *) logic        b_seq_gap;
     (* mark_debug = "true" *) logic [6:0]  b_lqi;
     (* mark_debug = "true" *) logic [15:0] b_rx_count, b_err_count;
 
@@ -263,7 +265,9 @@ module topRF #(
         .pkt_ok(b_pkt_ok), .crc_ok(b_crc_ok),
         .overflow(b_overflow), .timeout(b_rx_timeout),
         .rxbytes(b_rxbytes), .len_byte(b_len_byte),
-        .b0(b_b0), .b1(b_b1), .rssi(b_rssi), .lqi(b_lqi),
+        .b0(b_b0), .b1(b_b1), .b2(b_b2),
+        .last_seq(b_last_seq), .seq_gap(b_seq_gap),
+        .rssi(b_rssi), .lqi(b_lqi),
         .rx_count(b_rx_count), .err_count(b_err_count)
     );
 

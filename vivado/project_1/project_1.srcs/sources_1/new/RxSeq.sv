@@ -36,7 +36,9 @@ module RxSeq #(
     parameter int END_TIMEOUT_MS = 200,     // gdo2 stuck high -> give up
     // The payload TxSeq sends. Kept as parameters so the check is not buried
     // in the FSM and M8 can repoint it at PacketGenerator.
-    parameter logic [7:0] EXP_LEN = 8'd2,
+    // Payload is {0xAA, 0x55, seq}. Only the two markers are checked -- the
+    // third byte is the sequence number and changes every packet by design.
+    parameter logic [7:0] EXP_LEN = 8'd3,
     parameter logic [7:0] EXP_B0  = 8'hAA,
     parameter logic [7:0] EXP_B1  = 8'h55
 )(
@@ -70,7 +72,10 @@ module RxSeq #(
     output logic        timeout,       // gdo2 rose but never fell (sticky)
     output logic [7:0]  rxbytes,       // what RXBYTES reported
     output logic [7:0]  len_byte,      // first FIFO byte = payload length
-    output logic [7:0]  b0, b1,        // first two payload bytes
+    output logic [7:0]  b0, b1,        // marker bytes, expect 0xAA / 0x55
+    output logic [7:0]  b2,            // sequence number -- gaps here = lost packets
+    output logic [7:0]  last_seq,      // previous packet's seq, for spotting gaps
+    output logic        seq_gap,       // sticky: b2 != last_seq+1 on a good packet
     output logic [7:0]  rssi,          // status byte 1
     output logic [6:0]  lqi,           // status byte 2, bits 6:0
     output logic [15:0] rx_count,      // receptions that passed pkt_ok
@@ -113,7 +118,8 @@ module RxSeq #(
             pkt_ok    <= 1'b0; crc_ok <= 1'b0;
             overflow  <= 1'b0; timeout <= 1'b0;
             rxbytes   <= 8'h00; len_byte <= 8'h00;
-            b0        <= 8'h00; b1 <= 8'h00;
+            b0        <= 8'h00; b1 <= 8'h00; b2 <= 8'h00;
+            last_seq  <= 8'h00; seq_gap <= 1'b0;
             rssi      <= 8'h00; lqi <= 7'h00;
             rx_count  <= 16'd0; err_count <= 16'd0;
             tmr       <= 32'd0; rxb_prev <= 8'h00; n_read <= 8'h00;
@@ -130,6 +136,7 @@ module RxSeq #(
                 if (rx_idx == 8'd0) len_byte <= rx_byte;
                 if (rx_idx == 8'd1) b0       <= rx_byte;
                 if (rx_idx == 8'd2) b1       <= rx_byte;
+                if (rx_idx == 8'd3) b2       <= rx_byte;
                 if (rx_idx == n_read - 8'd2) rssi <= rx_byte;
                 if (rx_idx == n_read - 8'd1) begin
                     lqi    <= rx_byte[6:0];
@@ -244,6 +251,12 @@ module RxSeq #(
                     if (crc_ok && payload_match) begin
                         pkt_ok   <= 1'b1;
                         rx_count <= rx_count + 16'd1;
+                        // Loss detection. Only meaningful from the second good
+                        // packet on -- there is nothing to compare the first to.
+                        // 8-bit wrap is fine: 0xFF -> 0x00 is still +1.
+                        if (rx_count != 16'd0 && b2 != (last_seq + 8'd1))
+                            seq_gap <= 1'b1;
+                        last_seq <= b2;
                     end else begin
                         err_count <= err_count + 16'd1;
                     end
