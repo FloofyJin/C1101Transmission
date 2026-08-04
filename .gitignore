@@ -28,3 +28,7 @@ vitis/.metadata/
 # Vitis Application
 vitis/**/Debug/
 vitis/**/Release/
+
+# Stm32cube
+stm32workspace/.metadata/
+stm32workspace/**/.settings/
