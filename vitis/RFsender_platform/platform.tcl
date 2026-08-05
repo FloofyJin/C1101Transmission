@@ -26,3 +26,22 @@ bsp write
 bsp reload
 catch {bsp regenerate}
 platform generate
+platform active {RFsender_platform}
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/topSystem.xsa}
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/topSystem.xsa}
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/rfsender.xsa}
+platform generate
+platform clean
+platform generate
+platform active {RFsender_platform}
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/onlySender.xsa}
+platform generate -domains 
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/onlySender.xsa}
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/topSystem.xsa}
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/onlySender.xsa}
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/sender.xsa}
+platform generate -domains 
+platform clean
+platform generate
+platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/fullsender.xsa}
+platform generate -domains 

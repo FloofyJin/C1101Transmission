@@ -31,6 +31,7 @@ module topRF #(
     input  logic tx_btn,       // btn1 -- send one packet on radio A
     input  logic cfg_btn,      // btn2 -- re-run config on both radios
     input  logic sw_auto,      // sw0  -- continuous transmit
+    input  logic sw_onlySend,
 
     // CC1101 radio A (Pmod JC)
     output logic cc_sclk,
@@ -62,6 +63,7 @@ module topRF #(
     logic txb_m, txb_s, txb_d;
     logic cfgb_m, cfgb_s, cfgb_d;
     logic auto_m, auto_s;
+    logic onlySend_m, onlySend_s;
 
     (* mark_debug = "true" *) logic b_miso_s, b_gdo2_s;
     logic b_miso_m, b_gdo2_m;
@@ -75,6 +77,7 @@ module topRF #(
         txb_m    <= tx_btn;     txb_s    <= txb_m;   txb_d  <= txb_s;
         cfgb_m   <= cfg_btn;    cfgb_s   <= cfgb_m;  cfgb_d <= cfgb_s;
         auto_m   <= sw_auto;    auto_s   <= auto_m;
+        onlySend_m <= sw_onlySend;  onlySend_s <= onlySend_m;
     end
     wire tx_edge  = txb_s  & ~txb_d;
     wire cfg_edge = cfgb_s & ~cfgb_d;
@@ -140,7 +143,7 @@ module topRF #(
     logic [7:0] cfg_cmd_addr, cfg_cmd_data;
 
     ConfigSeq #(.CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US)) cfg_a (
-        .clk(sysclk), .rst(rst), .start(cfg_edge & ~a_tx_busy),
+        .clk(sysclk), .rst(rst), .start(cfg_edge & ~a_tx_busy),  .enable(1'b1),
         .cmd_valid(cfg_cmd_valid), .cmd(cfg_cmd),
         .cmd_addr(cfg_cmd_addr), .cmd_data(cfg_cmd_data),
         .drv_done(drv_done), .rd_data(rd_data),
@@ -239,7 +242,7 @@ module topRF #(
     logic [7:0] b_cfg_cmd_addr, b_cfg_cmd_data;
 
     ConfigSeq #(.CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US)) cfg_b (
-        .clk(sysclk), .rst(rst), .start(cfg_edge & ~b_rx_busy),
+        .clk(sysclk), .rst(rst), .start(cfg_edge & ~b_rx_busy), .enable(!onlySend_s),
         .cmd_valid(b_cfg_cmd_valid), .cmd(b_cfg_cmd),
         .cmd_addr(b_cfg_cmd_addr), .cmd_data(b_cfg_cmd_data),
         .drv_done(b_drv_done), .rd_data(b_rd_data),
@@ -289,7 +292,10 @@ module topRF #(
     end
 
     // ================= LEDs =================
-    assign led_cfg = a_config_ok & b_config_ok;
+    // In send-only mode radio B's ConfigSeq is held disabled and never publishes
+    // b_config_ok, so B must be excused rather than required: the term is
+    // "B is not needed OR B passed", not "B is needed AND B passed".
+    assign led_cfg = a_config_ok & (onlySend_s | b_config_ok);
     assign led_tx  = a_sent_ok;
     assign led_err = a_timeout;
     // LD3: the milestone-7 light. Driven from the COUNTER, not from b_pkt_ok --

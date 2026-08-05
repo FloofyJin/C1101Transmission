@@ -2,6 +2,6 @@
 the_ROM_image:
 {
 	[bootloader]D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/export/RFsender_platform/sw/RFsender_platform/boot/fsbl.elf
-	D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl/_ide/bitstream/topSystem.bit
+	D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream\fullsender.bit
 	D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\Debug\RFsender_application.elf
 }

@@ -12,6 +12,13 @@
 // and so on), which would break every line of Constants.xdc. Keeping an RTL top
 // that instantiates both preserves the pin names exactly.
 //
+// ADDING A PIN TAKES THREE EDITS: the topRF port, the topSystem port + its
+// connection below, and Constants.xdc. Miss the topSystem half and the build
+// still SUCCEEDS -- the XDC line becomes "[Vivado 12-4739] get_ports: No objects
+// matched", only a critical warning, and the dangling topRF input is tied to 0.
+// The signal is then silently stuck low on hardware. Grep the synthesis log for
+// 12-4739 whenever a new switch or button appears to do nothing.
+//
 // The DDR_* and FIXED_IO_* ports need NO constraints in Constants.xdc -- they
 // are hard-macro connections fixed by the PS7 configuration, and Vivado places
 // them automatically. Do not add pin assignments for them.
@@ -27,6 +34,7 @@ module topSystem #(
     input  logic tx_btn,       // btn1
     input  logic cfg_btn,      // btn2
     input  logic sw_auto,      // sw0
+    input  logic sw_onlySend,  // sw1 -- send-only: radio B is not configured
 
     output logic cc_sclk,
     output logic cc_mosi,
@@ -74,7 +82,7 @@ module topSystem #(
         .CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US), .TX_TIMEOUT_MS(TX_TIMEOUT_MS)
     ) rf_i (
         .sysclk(sysclk), .rst(rst), .tx_btn(tx_btn), .cfg_btn(cfg_btn),
-        .sw_auto(sw_auto),
+        .sw_auto(sw_auto), .sw_onlySend(sw_onlySend),
         .cc_sclk(cc_sclk), .cc_mosi(cc_mosi), .cc_miso(cc_miso),
         .cc_csn(cc_csn), .cc_gdo2(cc_gdo2),
         .cc_b_sclk(cc_b_sclk), .cc_b_mosi(cc_b_mosi), .cc_b_miso(cc_b_miso),

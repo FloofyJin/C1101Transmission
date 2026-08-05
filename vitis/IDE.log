@@ -96,3 +96,117 @@ Reason: Failed to execute command 'platform config -updatehw {D:/Work/projects/z
 14:29:00 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin
 14:29:00 INFO  : Overwriting existing bif file D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/RFsender_fsbl_system.bif
 14:29:02 INFO  : Bootgen command execution is done.
+23:29:10 DEBUG : Logs will be stored at 'D:/Work/projects/zybo_z7_projects/DD_RF/vitis/IDE.log'.
+23:29:11 INFO  : Launching XSCT server: xsct.bat -n  -interactive D:\Work\projects\zybo_z7_projects\DD_RF\vitis\temp_xsdb_launch_script.tcl
+23:29:14 INFO  : Platform repository initialization has completed.
+23:29:16 INFO  : Registering command handlers for Vitis TCF services
+23:29:18 INFO  : XSCT server has started successfully.
+23:29:33 INFO  : Successfully done setting XSCT server connection channel  
+23:29:33 INFO  : plnx-install-location is set to ''
+23:29:37 INFO  : Successfully done query RDI_DATADIR 
+23:29:37 INFO  : Successfully done setting workspace for the tool. 
+23:29:52 ERROR : Failed to update hardware specification for project 'RFsender_platform'.
+Reason: Failed to execute command 'platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/topSystem.xsa}'. Click on details for more information.
+23:30:22 ERROR : Failed to update hardware specification for project 'RFsender_platform'.
+Reason: Failed to execute command 'platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/topSystem.xsa}'. Click on details for more information.
+23:33:38 INFO  : Hardware specification for platform project 'RFsender_platform' is updated.
+23:34:48 INFO  : Result from executing command 'getProjects': RFsender_platform
+23:34:48 INFO  : Result from executing command 'getPlatforms': RFsender_platform|D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/export/RFsender_platform/RFsender_platform.xpfm;xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+23:36:13 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_fsbl'...
+23:36:21 INFO  : The hardware specification used by project 'RFsender_fsbl' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+23:36:21 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream\topSystem.bit' stored in project is removed.
+23:36:21 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream' in project 'RFsender_fsbl'.
+23:36:21 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit\ps7_init.tcl' stored in project is removed.
+23:36:26 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit' in project 'RFsender_fsbl'.
+23:38:19 INFO  : Result from executing command 'removePlatformRepo': 
+23:38:42 INFO  : Result from executing command 'getProjects': RFsender_platform
+23:38:42 INFO  : Result from executing command 'getPlatforms': xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+23:38:43 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_fsbl'...
+23:46:54 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
+23:46:54 INFO  : Overwriting existing bif file D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/RFsender_fsbl_system.bif
+23:46:56 INFO  : Bootgen command execution is done.
+23:52:55 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_application'...
+23:52:58 INFO  : The hardware specification used by project 'RFsender_application' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+23:52:58 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream\topSystem.bit' stored in project is removed.
+23:52:58 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream' in project 'RFsender_application'.
+23:52:58 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit\ps7_init.tcl' stored in project is removed.
+23:53:02 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit' in project 'RFsender_application'.
+23:53:20 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
+23:53:22 INFO  : Bootgen command execution is done.
+21:16:44 DEBUG : Logs will be stored at 'D:/Work/projects/zybo_z7_projects/DD_RF/vitis/IDE.log'.
+21:16:45 INFO  : Launching XSCT server: xsct.bat -n  -interactive D:\Work\projects\zybo_z7_projects\DD_RF\vitis\temp_xsdb_launch_script.tcl
+21:16:48 INFO  : Platform repository initialization has completed.
+21:16:49 INFO  : Registering command handlers for Vitis TCF services
+21:16:50 INFO  : XSCT server has started successfully.
+21:16:50 INFO  : Successfully done setting XSCT server connection channel  
+21:17:00 INFO  : plnx-install-location is set to ''
+21:17:00 INFO  : Successfully done setting workspace for the tool. 
+21:17:00 INFO  : Successfully done query RDI_DATADIR 
+21:19:16 INFO  : Hardware specification for platform project 'RFsender_platform' is updated.
+21:19:34 INFO  : Result from executing command 'getProjects': RFsender_platform
+21:19:34 INFO  : Result from executing command 'getPlatforms': RFsender_platform|D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/export/RFsender_platform/RFsender_platform.xpfm;xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+21:19:35 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_application'...
+21:19:41 INFO  : The hardware specification used by project 'RFsender_application' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+21:19:41 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream\rfsender.bit' stored in project is removed.
+21:19:41 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream' in project 'RFsender_application'.
+21:19:41 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit\ps7_init.tcl' stored in project is removed.
+21:19:46 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit' in project 'RFsender_application'.
+21:19:54 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_fsbl'...
+21:20:00 INFO  : The hardware specification used by project 'RFsender_fsbl' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+21:20:00 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream\rfsender.bit' stored in project is removed.
+21:20:00 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream' in project 'RFsender_fsbl'.
+21:20:00 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit\ps7_init.tcl' stored in project is removed.
+21:20:04 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit' in project 'RFsender_fsbl'.
+21:20:19 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
+21:20:21 INFO  : Bootgen command execution is done.
+21:20:44 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
+21:20:44 INFO  : Overwriting existing bif file D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/RFsender_fsbl_system.bif
+21:20:46 INFO  : Bootgen command execution is done.
+21:41:19 ERROR : Failed to update hardware specification for project 'RFsender_platform'.
+Reason: Failed to execute command 'platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/onlySender.xsa}'. Click on details for more information.
+21:41:36 INFO  : Hardware specification for platform project 'RFsender_platform' is updated.
+21:41:52 ERROR : Failed to update hardware specification for project 'RFsender_platform'.
+Reason: Failed to execute command 'platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/onlySender.xsa}'. Click on details for more information.
+21:42:31 INFO  : Hardware specification for platform project 'RFsender_platform' is updated.
+21:42:45 INFO  : Result from executing command 'getProjects': RFsender_platform
+21:42:45 INFO  : Result from executing command 'getPlatforms': RFsender_platform|D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/export/RFsender_platform/RFsender_platform.xpfm;xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+21:45:47 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_fsbl'...
+21:45:55 INFO  : The hardware specification used by project 'RFsender_fsbl' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+21:45:55 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream\onlySender.bit' stored in project is removed.
+21:45:55 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream' in project 'RFsender_fsbl'.
+21:45:55 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit\ps7_init.tcl' stored in project is removed.
+21:45:59 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit' in project 'RFsender_fsbl'.
+21:47:04 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_application'...
+21:47:06 INFO  : The hardware specification used by project 'RFsender_application' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+21:47:06 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream\onlySender.bit' stored in project is removed.
+21:47:06 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream' in project 'RFsender_application'.
+21:47:06 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit\ps7_init.tcl' stored in project is removed.
+21:47:14 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit' in project 'RFsender_application'.
+21:48:22 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
+21:48:22 INFO  : Overwriting existing bif file D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/RFsender_fsbl_system.bif
+21:48:25 INFO  : Bootgen command execution is done.
+22:01:51 INFO  : Result from executing command 'removePlatformRepo': 
+22:02:26 INFO  : Result from executing command 'getProjects': RFsender_platform
+22:02:26 INFO  : Result from executing command 'getPlatforms': xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+22:03:09 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_fsbl'...
+22:03:23 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_application'...
+22:05:19 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
+22:05:21 INFO  : Bootgen command execution is done.
+22:33:18 INFO  : Hardware specification for platform project 'RFsender_platform' is updated.
+22:33:39 INFO  : Result from executing command 'getProjects': RFsender_platform
+22:33:39 INFO  : Result from executing command 'getPlatforms': RFsender_platform|D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/export/RFsender_platform/RFsender_platform.xpfm;xilinx_vck190_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|D:/Applications/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+22:34:11 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_fsbl'...
+22:34:17 INFO  : The hardware specification used by project 'RFsender_fsbl' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+22:34:17 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream\sender.bit' stored in project is removed.
+22:34:17 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\bitstream' in project 'RFsender_fsbl'.
+22:34:17 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit\ps7_init.tcl' stored in project is removed.
+22:34:22 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_fsbl\_ide\psinit' in project 'RFsender_fsbl'.
+22:34:33 INFO  : Checking for BSP changes to sync application flags for project 'RFsender_application'...
+22:34:35 INFO  : The hardware specification used by project 'RFsender_application' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+22:34:35 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream\sender.bit' stored in project is removed.
+22:34:35 INFO  : The updated bitstream files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\bitstream' in project 'RFsender_application'.
+22:34:35 INFO  : The file 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit\ps7_init.tcl' stored in project is removed.
+22:34:39 INFO  : The updated ps init files are copied from platform to folder 'D:\Work\projects\zybo_z7_projects\DD_RF\vitis\RFsender_application\_ide\psinit' in project 'RFsender_application'.
+22:35:12 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
+22:35:12 INFO  : Overwriting existing bif file D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/RFsender_fsbl_system.bif
+22:35:14 INFO  : Bootgen command execution is done.

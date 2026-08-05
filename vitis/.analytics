@@ -20,3 +20,47 @@ timestamp=[2026-08-02 14:11:27], mode=BUILD, duration=0:00:07.134, duration_ms=7
 timestamp=[2026-08-02 14:13:38], mode=MISC, duration=0:00:05.989, duration_ms=5989, data={name=RFsender_fsbl_system, type=bif_creation}
 timestamp=[2026-08-02 14:14:38], mode=BUILD, duration=0:00:02.266, duration_ms=2266, data={name=RFsender_application, configuration=Debug, clean_build=false}
 timestamp=[2026-08-02 14:14:45], mode=BUILD, duration=0:00:06.919, duration_ms=6919, data={name=RFsender_application_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-03 23:29:14], mode=PLATFORM_REPOSITORY_INIT, duration=0:00:00.556, duration_ms=556, data={}
+timestamp=[2026-08-03 23:29:15], mode=WORKBENCH_START, duration=0:00:09.087, duration_ms=9087, data={}
+timestamp=[2026-08-03 23:29:16], mode=WORKBENCH_UI_INIT, duration=0:00:00.844, duration_ms=844, data={editors_count=6, platform_editors_count=2, projects_count=6, platform_projects_count=1, active_platform_editor=false, projects=RFsender_application,RFsender_application_system,RFsender_fsbl,RFsender_fsbl_system,RFsender_platform,RemoteSystemsTempFiles}
+timestamp=[2026-08-03 23:30:09], mode=PLATFORM_GENERATION, duration=0:00:02.647, duration_ms=2647, data={name=RFsender_platform}
+timestamp=[2026-08-03 23:34:49], mode=PLATFORM_GENERATION, duration=0:00:33.444, duration_ms=33444, data={name=RFsender_platform}
+timestamp=[2026-08-03 23:36:21], mode=BUILD, duration=0:00:05.767, duration_ms=5767, data={name=RFsender_fsbl, configuration=Debug, clean_build=false}
+timestamp=[2026-08-03 23:36:35], mode=BUILD, duration=0:00:08.983, duration_ms=8983, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-03 23:38:22], mode=PLATFORM_GENERATION, duration=0:00:06.505, duration_ms=6505, data={name=RFsender_platform}
+timestamp=[2026-08-03 23:38:22], mode=BUILD, duration=0:00:00.195, duration_ms=195, data={name=RFsender_fsbl, configuration=Debug, clean_build=true}
+timestamp=[2026-08-03 23:38:23], mode=BUILD, duration=0:00:00.189, duration_ms=189, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=true}
+timestamp=[2026-08-03 23:38:43], mode=PLATFORM_GENERATION, duration=0:00:16.270, duration_ms=16270, data={name=RFsender_platform}
+timestamp=[2026-08-03 23:38:48], mode=BUILD, duration=0:00:05.337, duration_ms=5337, data={name=RFsender_fsbl, configuration=Debug, clean_build=false}
+timestamp=[2026-08-03 23:38:56], mode=BUILD, duration=0:00:07.485, duration_ms=7485, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-03 23:52:57], mode=BUILD, duration=0:00:02.178, duration_ms=2178, data={name=RFsender_application, configuration=Debug, clean_build=false}
+timestamp=[2026-08-03 23:53:09], mode=BUILD, duration=0:00:06.958, duration_ms=6958, data={name=RFsender_application_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:16:48], mode=PLATFORM_REPOSITORY_INIT, duration=0:00:00.515, duration_ms=515, data={}
+timestamp=[2026-08-04 21:16:49], mode=WORKBENCH_START, duration=0:00:08.619, duration_ms=8619, data={}
+timestamp=[2026-08-04 21:16:49], mode=WORKBENCH_UI_INIT, duration=0:00:00.455, duration_ms=455, data={editors_count=6, platform_editors_count=2, projects_count=6, platform_projects_count=1, active_platform_editor=false, projects=RFsender_application,RFsender_application_system,RFsender_fsbl,RFsender_fsbl_system,RFsender_platform,RemoteSystemsTempFiles}
+timestamp=[2026-08-04 21:19:35], mode=PLATFORM_GENERATION, duration=0:00:13.339, duration_ms=13339, data={name=RFsender_platform}
+timestamp=[2026-08-04 21:19:35], mode=BUILD, duration=0:00:00.434, duration_ms=434, data={name=RFsender_application, configuration=Debug, clean_build=true}
+timestamp=[2026-08-04 21:19:40], mode=BUILD, duration=0:00:03.424, duration_ms=3424, data={name=RFsender_application, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:19:53], mode=BUILD, duration=0:00:07.427, duration_ms=7427, data={name=RFsender_application_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:20:00], mode=BUILD, duration=0:00:06.018, duration_ms=6018, data={name=RFsender_fsbl, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:20:10], mode=BUILD, duration=0:00:06.121, duration_ms=6121, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:42:46], mode=PLATFORM_GENERATION, duration=0:00:09.365, duration_ms=9365, data={name=RFsender_platform}
+timestamp=[2026-08-04 21:45:47], mode=BUILD, duration=0:00:00.183, duration_ms=183, data={name=RFsender_fsbl, configuration=Debug, clean_build=true}
+timestamp=[2026-08-04 21:45:54], mode=BUILD, duration=0:00:06.086, duration_ms=6086, data={name=RFsender_fsbl, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:46:06], mode=BUILD, duration=0:00:06.611, duration_ms=6611, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:47:04], mode=BUILD, duration=0:00:00.197, duration_ms=197, data={name=RFsender_application, configuration=Debug, clean_build=true}
+timestamp=[2026-08-04 21:47:06], mode=BUILD, duration=0:00:01.719, duration_ms=1719, data={name=RFsender_application, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 21:47:20], mode=BUILD, duration=0:00:06.592, duration_ms=6592, data={name=RFsender_application_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:01:57], mode=PLATFORM_GENERATION, duration=0:00:08.904, duration_ms=8904, data={name=RFsender_platform}
+timestamp=[2026-08-04 22:02:27], mode=PLATFORM_GENERATION, duration=0:00:27.715, duration_ms=27715, data={name=RFsender_platform}
+timestamp=[2026-08-04 22:03:09], mode=BUILD, duration=0:00:00.261, duration_ms=261, data={name=RFsender_fsbl, configuration=Debug, clean_build=true}
+timestamp=[2026-08-04 22:03:15], mode=BUILD, duration=0:00:06.118, duration_ms=6118, data={name=RFsender_fsbl, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:03:22], mode=BUILD, duration=0:00:06.695, duration_ms=6695, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:03:23], mode=BUILD, duration=0:00:00.178, duration_ms=178, data={name=RFsender_application, configuration=Debug, clean_build=true}
+timestamp=[2026-08-04 22:03:24], mode=BUILD, duration=0:00:01.512, duration_ms=1512, data={name=RFsender_application, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:03:31], mode=BUILD, duration=0:00:06.769, duration_ms=6769, data={name=RFsender_application_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:33:40], mode=PLATFORM_GENERATION, duration=0:00:09.431, duration_ms=9431, data={name=RFsender_platform}
+timestamp=[2026-08-04 22:34:17], mode=BUILD, duration=0:00:04.667, duration_ms=4667, data={name=RFsender_fsbl, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:34:29], mode=BUILD, duration=0:00:06.555, duration_ms=6555, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:34:34], mode=BUILD, duration=0:00:01.756, duration_ms=1756, data={name=RFsender_application, configuration=Debug, clean_build=false}
+timestamp=[2026-08-04 22:34:46], mode=BUILD, duration=0:00:06.508, duration_ms=6508, data={name=RFsender_application_system, configuration=Debug, clean_build=false}

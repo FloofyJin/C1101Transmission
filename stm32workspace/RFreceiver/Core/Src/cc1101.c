@@ -1,4 +1,11 @@
 /*
+ * cc1101.c
+ *
+ *  Created on: Aug 3, 2026
+ *      Author: Nymph
+ */
+
+/*
  * cc1101.c -- see cc1101.h
  *
  * Mirrors the receive sequence in the Zybo's RxSeq.sv, because it is the same

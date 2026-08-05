@@ -32,6 +32,7 @@ module ConfigSeq #(
     input  logic       clk,
     input  logic       rst,
     input  logic       start,         // re-run (auto-runs once after reset)
+    input  logic       enable,
 
     output logic [2:0] cmd,
     output logic cmd_valid,
@@ -147,7 +148,12 @@ module ConfigSeq #(
                 begin
                     wdt <= '0;
                     busy <= 1'b1;
-                    if(dly == PWR_CYCLES - 1) begin
+                    if(!enable) begin
+                        // Park here while disabled. dly restarts from zero on
+                        // enable, so the chip still gets its full settle time.
+                        busy <= 1'b0;
+                        dly  <= '0;
+                    end else if(dly == PWR_CYCLES - 1) begin
                         dly <= '0;          // so a later reset still gets the full wait
                         cstate <= RST_S;
                     end else begin
@@ -265,7 +271,7 @@ module ConfigSeq #(
 
                 IDLE_S: // IDLE STATE -- wait for a re-run request
                 begin
-                    if(start) begin
+                    if(start && enable) begin
                         // Invalidate the previous run's verdict up front so a
                         // run in progress can never look like a passing one.
                         config_ok <= 1'b0;

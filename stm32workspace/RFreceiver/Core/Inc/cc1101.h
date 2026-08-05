@@ -1,4 +1,11 @@
 /*
+ * cc1101.h
+ *
+ *  Created on: Aug 3, 2026
+ *      Author: Nymph
+ */
+
+/*
  * cc1101.h -- CC1101 receiver for the DD_RF link
  *
  * Receives the packets transmitted by the Zybo Z7-10 PL design:
