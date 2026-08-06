@@ -17,6 +17,7 @@
  */
 #include "cc1101.h"
 #include <string.h>
+#include <stdio.h>
 
 /* ---- SPI header byte fields ---- */
 #define CC_WRITE        0x00
@@ -186,9 +187,13 @@ void cc1101_init(SPI_HandleTypeDef *hspi)
     for (unsigned i = 0; i < sizeof(cc_cfg)/sizeof(cc_cfg[0]); i++)
         cc_write_reg(cc_cfg[i][0], cc_cfg[i][1]);
 
-    /* PATABLE: RX-only here, so the value barely matters -- kept equal to the
-       Zybo's for symmetry. Note the Zybo transmits at ~-30 dBm. */
-    cc_write_reg(PATABLE_ADDR, 0x12);
+    cc_write_reg(PATABLE_ADDR, 0x12); // set expected receiving power
+
+    for (unsigned i =0; i < sizeof(cc_cfg)/sizeof(cc_cfg[0]); i++){
+    	if (cc_read_reg(cc_cfg[i][0]) != cc_cfg[i][1]){
+    		printf("CC1101 config failed!\r\n");
+    	}
+    }
 
     cc_strobe(SIDLE);
     cc_strobe(SFRX);        /* only valid in IDLE or RXFIFO_OVERFLOW */
@@ -201,14 +206,18 @@ void cc1101_init(SPI_HandleTypeDef *hspi)
  */
 bool cc1101_rx_poll(cc1101_pkt_t *pkt)
 {
-    if (HAL_GPIO_ReadPin(CC_GDO2_PORT, CC_GDO2_PIN) == GPIO_PIN_RESET)
+    if (HAL_GPIO_ReadPin(CC_GDO2_PORT, CC_GDO2_PIN) == GPIO_PIN_RESET) {
         return false;                       /* no sync word yet */
+    }
 
     /* GDO2 high = sync detected. It falls at end of packet. */
     uint32_t t0 = HAL_GetTick();
     while (HAL_GPIO_ReadPin(CC_GDO2_PORT, CC_GDO2_PIN) == GPIO_PIN_SET) {
         if (HAL_GetTick() - t0 > 200) {     /* stuck high -> give up */
-            cc_strobe(SIDLE); cc_strobe(SFRX); cc_strobe(SRX);
+        	printf("Stuck high: giving up\r\n");
+            cc_strobe(SIDLE);
+            cc_strobe(SFRX);
+            cc_strobe(SRX);
             return false;
         }
     }

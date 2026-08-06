@@ -104,11 +104,15 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  /* after MX_SPI1_Init(); MX_USART2_UART_Init(); */
+  cc1101_init(&hspi1);
+
+  /* MUST come after cc1101_init -- that call is what hands the driver the SPI
+     handle. Read the chip before it and every transfer is a no-op against a
+     NULL handle, which reads back as a very convincing 00/00.
+     PARTNUM is 0x00 on a healthy CC1101; VERSION is the liveness check and
+     should be 0x14 (0x04 on some batches). */
   printf("PARTNUM=%02X VERSION=%02X\r\n",
 		  cc1101_read_status(0x30), cc1101_read_status(0x31));
-
-  cc1101_init(&hspi1);
 
   cc1101_pkt_t p;
   uint8_t expect = 0; bool first = true;

@@ -31,7 +31,7 @@
 /* ---- pin mapping: edit to match your .ioc ---- */
 #define CC_CS_PORT    GPIOB
 #define CC_CS_PIN     GPIO_PIN_6      /* D10 */
-#define CC_GDO2_PORT  GPIOA
+#define CC_GDO2_PORT  GPIOB
 #define CC_GDO2_PIN   GPIO_PIN_8      /* D7  */
 #define CC_MISO_PORT  GPIOA
 #define CC_MISO_PIN   GPIO_PIN_6      /* read as GPIO for the CHIP_RDYn wait */

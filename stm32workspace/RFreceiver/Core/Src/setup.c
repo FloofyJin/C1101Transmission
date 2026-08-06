@@ -26,11 +26,20 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi){
 
 		__HAL_RCC_GPIOB_CLK_ENABLE();
 
-		GPIO_InitStruct2.Pin = GPIO_PIN_6 | GPIO_PIN_8; // CSn and GDO2
+		GPIO_InitStruct2.Pin = GPIO_PIN_6; // CSn
 		GPIO_InitStruct2.Mode = GPIO_MODE_OUTPUT_PP;
 		GPIO_InitStruct2.Pull = GPIO_NOPULL;
 		GPIO_InitStruct2.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 
 		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct2);
+
+		GPIO_InitTypeDef GPIO_InitStruct3 = {0};
+
+		GPIO_InitStruct3.Pin = GPIO_PIN_8; // GD02
+		GPIO_InitStruct3.Mode = GPIO_MODE_INPUT;
+		GPIO_InitStruct3.Pull = GPIO_PULLDOWN;
+		GPIO_InitStruct3.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+
+		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct3);
 	}
 }
