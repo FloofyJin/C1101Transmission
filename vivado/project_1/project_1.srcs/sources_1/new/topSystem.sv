@@ -49,6 +49,11 @@ module topSystem #(
     output logic cc_b_csn,
     input  logic cc_b_gdo2,
 
+    output logic dac_cs,
+    output logic dac_sdi,
+    output logic dac_ldac,
+    output logic dac_sclk,
+
     output logic led_cfg,
     output logic led_tx,
     output logic led_err,
@@ -88,6 +93,7 @@ module topSystem #(
         .cc_csn(cc_csn), .cc_gdo2(cc_gdo2),
         .cc_b_sclk(cc_b_sclk), .cc_b_mosi(cc_b_mosi), .cc_b_miso(cc_b_miso),
         .cc_b_csn(cc_b_csn), .cc_b_gdo2(cc_b_gdo2),
+        .dac_cs(dac_cs), .dac_sdi(dac_sdi), .dac_ldac(dac_ldac), .dac_sclk(dac_sclk),
         .led_cfg(led_cfg), .led_tx(led_tx), .led_err(led_err), .led_rx(led_rx)
     );
 

@@ -54,6 +54,12 @@ module topRF #(
     output logic cc_b_csn,
     input  logic cc_b_gdo2,
 
+    // MCP4922 (Pmod JD)
+    output logic dac_cs,
+    output logic dac_sdi,
+    output logic dac_ldac,
+    output logic dac_sclk,
+
     output logic led_cfg,      // LD0: both radios configured OK
     output logic led_tx,       // LD1: last packet transmitted OK
     output logic led_err,      // LD2: gdo2 timeout
@@ -328,6 +334,24 @@ module topRF #(
             b_cmd_data  = b_cfg_cmd_data;
         end
     end
+
+    logic draw_point;
+    (* mark_debug = "true" *) logic draw_point_done, drawing_busy;
+    logic [15:0] pulse_cnt;
+    always_ff @(posedge sysclk) begin
+        if (rst) begin pulse_cnt <= 0; draw_point <= 0; end
+        else begin
+            draw_point <= (pulse_cnt == 0);      // ~1.9 kHz refresh
+            pulse_cnt  <= pulse_cnt + 1;
+        end
+    end
+    // --- MCP4922 connection to JD pmod ---
+    Mcp4922Driver #() dacDriver (
+        .clk(sysclk), .rst(rst), .start(draw_point), 
+        .x(12'h800), .y(12'h800), .done(draw_point_done), 
+        .busy(drawing_busy), .dac_cs(dac_cs), .dac_ldac(dac_ldac), 
+        .dac_sclk(dac_sclk), .dac_sdi(dac_sdi)
+    );
 
     // ================= LEDs =================
     // In send-only mode radio B's ConfigSeq is held disabled and never publishes
