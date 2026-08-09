@@ -1,23 +1,29 @@
 `timescale 1ns / 1ps
 //------------------------------------------------------------------------------
-// topRF  --  Milestone 6: configure both radios, then transmit from radio A
+// topRF  --  Milestone 14: receive point packets into PointRam
 //
 // Per radio: SPIMaster + CC1101Driver + ConfigSeq. Radio A additionally gets a
-// TxSeq that sends a hardcoded {0xAA, 0x55} packet and watches gdo2.
+// TxSeq (the phase-1 transmitter, kept for regression); radio B gets RxSeq,
+// which now parses the phase-2 point packet and loads PointRam.
+//
+// Phase 2 reverses the link: the STM32 transmits and the Zybo receives, so the
+// live path is radio B. Radio A's TxSeq still works and is worth keeping -- it
+// is the only way to test the receiver without the STM32 in the loop.
 //
 // ConfigSeq and TxSeq both drive radio A's single command port, so they are
 // muxed on `a_tx_busy`. They never overlap: TxSeq only starts once config is
-// finished, and the config re-run button is ignored while TxSeq is busy.
-//
-// Radio B is configured but otherwise idle -- it becomes the receiver at
-// milestone 7. Its gdo2 is wired and probed now so the pin is proven early.
+// finished, and the config re-run button is ignored while TxSeq is busy. Radio
+// B's bus is shared the same way between ConfigSeq and RxSeq.
 //
 // Controls:  btn0 = reset          btn1 = send one packet on A
 //            btn2 = re-run config on both radios
 //            sw0  = auto-transmit (a packet every ~200 ms)
-// LEDs:      LD0 = both radios configured OK
+//            sw1  = sender enable (radio A)
+//            sw2  = receiver enable (radio B)
+// LEDs:      LD0 = enabled radios configured OK
 //            LD1 = last transmit completed (gdo2 rose and fell)
 //            LD2 = gdo2 never moved -> transmit timed out (sticky)
+//            LD3 = a point packet was received and committed (sticky)
 //
 // NOTE: net set changed -> clear debug_ila.xdc and re-run "Set Up Debug".
 //------------------------------------------------------------------------------
@@ -27,11 +33,12 @@ module topRF #(
     parameter int TX_TIMEOUT_MS = 200        // lowered by the testbench
 )(
     input  logic sysclk,
-    input  logic rst,          // btn0
-    input  logic tx_btn,       // btn1 -- send one packet on radio A
-    input  logic cfg_btn,      // btn2 -- re-run config on both radios
-    input  logic sw_auto,      // sw0  -- continuous transmit
-    input  logic sw_onlySend,
+    input  logic rst,           // btn0
+    input  logic tx_btn,        // btn1 -- send one packet on radio A
+    input  logic cfg_btn,       // btn2 -- re-run config on both radios
+    input  logic sw_auto,       // sw0  -- continuous transmit
+    input  logic sw_sender_enable,   // sw1
+    input  logic sw_receiver_enable,// sw2  -- receive only
 
     // CC1101 radio A (Pmod JC)
     output logic cc_sclk,
@@ -63,7 +70,8 @@ module topRF #(
     logic txb_m, txb_s, txb_d;
     logic cfgb_m, cfgb_s, cfgb_d;
     logic auto_m, auto_s;
-    logic onlySend_m, onlySend_s;
+    logic sender_enable_m, sender_enable_s;
+    logic receiver_enable_m, receiver_enable_s;
 
     (* mark_debug = "true" *) logic b_miso_s, b_gdo2_s;
     logic b_miso_m, b_gdo2_m;
@@ -77,7 +85,8 @@ module topRF #(
         txb_m    <= tx_btn;     txb_s    <= txb_m;   txb_d  <= txb_s;
         cfgb_m   <= cfg_btn;    cfgb_s   <= cfgb_m;  cfgb_d <= cfgb_s;
         auto_m   <= sw_auto;    auto_s   <= auto_m;
-        onlySend_m <= sw_onlySend;  onlySend_s <= onlySend_m;
+        sender_enable_m <= sw_sender_enable;  sender_enable_s <= sender_enable_m;
+        receiver_enable_m <= sw_receiver_enable;  receiver_enable_s <= receiver_enable_m;
     end
     wire tx_edge  = txb_s  & ~txb_d;
     wire cfg_edge = cfgb_s & ~cfgb_d;
@@ -143,7 +152,7 @@ module topRF #(
     logic [7:0] cfg_cmd_addr, cfg_cmd_data;
 
     ConfigSeq #(.CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US)) cfg_a (
-        .clk(sysclk), .rst(rst), .start(cfg_edge & ~a_tx_busy),  .enable(1'b1),
+        .clk(sysclk), .rst(rst), .start(cfg_edge & ~a_tx_busy),  .enable(sender_enable_s),
         .cmd_valid(cfg_cmd_valid), .cmd(cfg_cmd),
         .cmd_addr(cfg_cmd_addr), .cmd_data(cfg_cmd_data),
         .drv_done(drv_done), .rd_data(rd_data),
@@ -226,12 +235,16 @@ module topRF #(
     //     reads b_rx_busy) ---
     (* mark_debug = "true" *) logic        b_rx_busy, b_rx_done;
     (* mark_debug = "true" *) logic        b_pkt_ok, b_crc_ok, b_overflow, b_rx_timeout;
+    (* mark_debug = "true" *) logic        b_fmt_ok, b_bad_fmt;
     (* mark_debug = "true" *) logic [7:0]  b_rxbytes, b_len_byte;
-    (* mark_debug = "true" *) logic [7:0]  b_b0, b_b1, b_b2, b_rssi;
-    (* mark_debug = "true" *) logic [7:0]  b_last_seq;
-    (* mark_debug = "true" *) logic        b_seq_gap;
+    (* mark_debug = "true" *) logic [7:0]  b_start_index, b_count, b_rssi;
     (* mark_debug = "true" *) logic [6:0]  b_lqi;
-    (* mark_debug = "true" *) logic [15:0] b_rx_count, b_err_count;
+    (* mark_debug = "true" *) logic [15:0] b_rx_count, b_err_count, b_pt_writes;
+
+    // ---- PointRam write port, driven by RxSeq ----
+    (* mark_debug = "true" *) logic        pt_we;
+    (* mark_debug = "true" *) logic [7:0]  pt_addr;
+    (* mark_debug = "true" *) logic [17:0] pt_data;
 
     // --- config mission ---
     (* mark_debug = "true" *) logic       b_config_ok, b_cfg_done, b_cfg_busy;
@@ -242,7 +255,7 @@ module topRF #(
     logic [7:0] b_cfg_cmd_addr, b_cfg_cmd_data;
 
     ConfigSeq #(.CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US)) cfg_b (
-        .clk(sysclk), .rst(rst), .start(cfg_edge & ~b_rx_busy), .enable(!onlySend_s),
+        .clk(sysclk), .rst(rst), .start(cfg_edge & ~b_rx_busy), .enable(receiver_enable_s),
         .cmd_valid(b_cfg_cmd_valid), .cmd(b_cfg_cmd),
         .cmd_addr(b_cfg_cmd_addr), .cmd_data(b_cfg_cmd_data),
         .drv_done(b_drv_done), .rd_data(b_rd_data),
@@ -264,14 +277,39 @@ module topRF #(
         .rx_len(b_rx_len), .rx_idx(b_rx_idx), .rx_byte(b_rx_byte),
         .rx_strobe(b_rx_strobe),
         .gdo2(b_gdo2_s),
+        .pt_we(pt_we), .pt_addr(pt_addr), .pt_data(pt_data),
         .busy(b_rx_busy), .done(b_rx_done),
         .pkt_ok(b_pkt_ok), .crc_ok(b_crc_ok),
+        .fmt_ok(b_fmt_ok), .bad_fmt(b_bad_fmt),
         .overflow(b_overflow), .timeout(b_rx_timeout),
         .rxbytes(b_rxbytes), .len_byte(b_len_byte),
-        .b0(b_b0), .b1(b_b1), .b2(b_b2),
-        .last_seq(b_last_seq), .seq_gap(b_seq_gap),
+        .start_index(b_start_index), .count(b_count),
         .rssi(b_rssi), .lqi(b_lqi),
-        .rx_count(b_rx_count), .err_count(b_err_count)
+        .rx_count(b_rx_count), .err_count(b_err_count),
+        .pt_writes(b_pt_writes)
+    );
+
+    // ================= POINT RAM =================
+    // The coordinate list. RxSeq writes it; ScanoutEngine will read it at M11.
+    //
+    // Until ScanoutEngine exists the read port has no consumer, and an
+    // unread RAM is optimised away entirely -- so the sweep counter below is
+    // load-bearing for now, not just debug. It also happens to be the readback
+    // tool: 255 entries at 125 MHz is 2.04 us, and the ILA holds 4096 samples
+    // = 32.77 us, so ONE capture contains ~16 complete passes over the RAM.
+    // Trigger on pt_sweep == <index> to inspect any single entry.
+    (* mark_debug = "true" *) logic [7:0]  pt_sweep;
+    (* mark_debug = "true" *) logic [17:0] pt_rdata;
+
+    always_ff @(posedge sysclk) begin
+        if (rst) pt_sweep <= 8'd0;
+        else     pt_sweep <= (pt_sweep == 8'd254) ? 8'd0 : pt_sweep + 8'd1;
+    end
+
+    PointRam #(.N_POINTS(255), .DWELL_BITS(2)) pram (
+        .clk(sysclk),
+        .we(pt_we), .waddr(pt_addr), .wdata(pt_data),
+        .raddr(pt_sweep), .rdata(pt_rdata)
     );
 
     // --- who owns radio B's command bus ---
@@ -295,14 +333,14 @@ module topRF #(
     // In send-only mode radio B's ConfigSeq is held disabled and never publishes
     // b_config_ok, so B must be excused rather than required: the term is
     // "B is not needed OR B passed", not "B is needed AND B passed".
-    assign led_cfg = a_config_ok & (onlySend_s | b_config_ok);
+    assign led_cfg = (a_config_ok | !sender_enable_s) & (b_config_ok | !receiver_enable_s);
     assign led_tx  = a_sent_ok;
     assign led_err = a_timeout;
-    // LD3: the milestone-7 light. Driven from the COUNTER, not from b_pkt_ok --
-    // RxSeq clears pkt_ok when it re-arms, roughly 30 us after each packet, so
-    // b_pkt_ok is a per-packet verdict for the ILA to sample at b_rx_done, not
-    // something an eye can see. rx_count is sticky: first good packet lights it
-    // and it stays lit.
+    // LD3: a point packet was received and committed to PointRam. Driven from
+    // the COUNTER, not from b_pkt_ok -- RxSeq clears pkt_ok when it re-arms,
+    // roughly 30 us after each packet, so b_pkt_ok is a per-packet verdict for
+    // the ILA to sample at b_rx_done, not something an eye can see. rx_count is
+    // sticky: first good packet lights it and it stays lit.
     assign led_rx  = |b_rx_count;
 
 endmodule

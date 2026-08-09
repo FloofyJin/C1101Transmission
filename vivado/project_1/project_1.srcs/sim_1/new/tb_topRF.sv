@@ -22,16 +22,17 @@ module tb_topRF;
 
     wire a_sclk, a_mosi, a_csn, a_miso, a_gdo0;
     wire b_sclk, b_mosi, b_csn, b_miso, b_gdo0;
-    wire led_cfg, led_tx, led_err;
+    wire led_cfg, led_tx, led_err, led_rx;
 
     topRF #(.CLK_HZ(125_000_000), .POWERUP_US(1)) dut (
         .sysclk(sysclk), .rst(rst),
+        .sw_sender_enable(1'b1), .sw_receiver_enable(1'b1),
         .tx_btn(tx_btn), .cfg_btn(cfg_btn), .sw_auto(sw_auto),
         .cc_sclk(a_sclk), .cc_mosi(a_mosi), .cc_miso(a_miso),
-        .cc_csn(a_csn),   .cc_gdo0(a_gdo0),
+        .cc_csn(a_csn),   .cc_gdo2(a_gdo0),
         .cc_b_sclk(b_sclk), .cc_b_mosi(b_mosi), .cc_b_miso(b_miso),
-        .cc_b_csn(b_csn),   .cc_b_gdo0(b_gdo0),
-        .led_cfg(led_cfg), .led_tx(led_tx), .led_err(led_err)
+        .cc_b_csn(b_csn),   .cc_b_gdo2(b_gdo0),
+        .led_cfg(led_cfg), .led_tx(led_tx), .led_err(led_err), .led_rx(led_rx)
     );
 
     cc1101_model radio_a (
@@ -84,7 +85,11 @@ module tb_topRF;
         check("led_cfg",     led_cfg,         1);
         check("PKTCTRL0 in chip A", radio_a.regs[8'h08], 8'h05);
         check("MDMCFG2  in chip A", radio_a.regs[8'h12], 8'h13);
-        check("IOCFG0   in chip A", radio_a.regs[8'h02], 8'h06);
+        // Packet framing moved GDO0 -> GDO2 on 2026-08-01: these modules do not
+        // break GDO0 out, and GDO1 is the SO pin (valid only while CSn is high).
+        // So IOCFG2 carries 0x06 and IOCFG0 is parked 3-state.
+        check("IOCFG2   in chip A", radio_a.regs[8'h00], 8'h06);
+        check("IOCFG0   in chip A", radio_a.regs[8'h02], 8'h2E);
         check("PATABLE  in chip A", radio_a.regs[8'h3E], 8'h12);
 
         // ---------- 2. transmit one packet ----------
@@ -108,18 +113,21 @@ module tb_topRF;
         disable fork;
         @(posedge sysclk);
 
+        // Payload became {0xAA, 0x55, seq} on 2026-08-02, so the length byte is
+        // 3 and every offset after the payload shifted by one.
         expect_byte(0, 8'h36, "SIDLE strobe");
         expect_byte(1, 8'h3B, "SFTX strobe");
         expect_byte(2, 8'h7F, "TX FIFO burst-write header");
-        expect_byte(3, 8'h02, "length byte");
+        expect_byte(3, 8'h03, "length byte");
         expect_byte(4, 8'hAA, "payload[0]");
         expect_byte(5, 8'h55, "payload[1]");
-        expect_byte(6, 8'hFA, "TXBYTES status read");
-        expect_byte(8, 8'h35, "STX strobe");
-        expect_byte(9, 8'hF5, "MARCSTATE status read");
-        expect_byte(11, 8'h36, "SIDLE strobe");
+        expect_byte(6, 8'h00, "payload[2] = seq, first packet");
+        expect_byte(7, 8'hFA, "TXBYTES status read");
+        expect_byte(9, 8'h35, "STX strobe");
+        expect_byte(10, 8'hF5, "MARCSTATE status read");
+        expect_byte(12, 8'h36, "SIDLE strobe");
 
-        check("a_txbytes",   dut.a_txbytes,   8'h03);
+        check("a_txbytes",   dut.a_txbytes,   8'h04);  // 1 len + 3 payload
         check("a_marcstate", dut.a_marcstate, 8'h13);
         check("a_sync_seen", dut.a_sync_seen, 1);
         check("a_sent_ok",   dut.a_sent_ok,   1);
@@ -129,9 +137,10 @@ module tb_topRF;
         check("led_err",     led_err,         0);
 
         // the model saw the payload land in its FIFO in order
-        check("chip A fifo[0] (len)", radio_a.fifo[0], 8'h02);
+        check("chip A fifo[0] (len)", radio_a.fifo[0], 8'h03);
         check("chip A fifo[1]",       radio_a.fifo[1], 8'hAA);
         check("chip A fifo[2]",       radio_a.fifo[2], 8'h55);
+        check("chip A fifo[3] (seq)", radio_a.fifo[3], 8'h00);
 
         // ---------- 3. a second packet still works ----------
         $display("\n=== second packet ===");

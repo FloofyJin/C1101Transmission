@@ -19,16 +19,17 @@ module tb_topRF_timeout;
 
     wire a_sclk, a_mosi, a_csn, a_miso, a_gdo0;
     wire b_sclk, b_mosi, b_csn, b_miso, b_gdo0;
-    wire led_cfg, led_tx, led_err;
+    wire led_cfg, led_tx, led_err, led_rx;
 
     topRF #(.CLK_HZ(125_000_000), .POWERUP_US(1), .TX_TIMEOUT_MS(1)) dut (
         .sysclk(sysclk), .rst(rst),
+        .sw_sender_enable(1'b1), .sw_receiver_enable(1'b1),
         .tx_btn(tx_btn), .cfg_btn(cfg_btn), .sw_auto(sw_auto),
         .cc_sclk(a_sclk), .cc_mosi(a_mosi), .cc_miso(a_miso),
-        .cc_csn(a_csn),   .cc_gdo0(a_gdo0),
+        .cc_csn(a_csn),   .cc_gdo2(a_gdo0),
         .cc_b_sclk(b_sclk), .cc_b_mosi(b_mosi), .cc_b_miso(b_miso),
-        .cc_b_csn(b_csn),   .cc_b_gdo0(b_gdo0),
-        .led_cfg(led_cfg), .led_tx(led_tx), .led_err(led_err)
+        .cc_b_csn(b_csn),   .cc_b_gdo2(b_gdo0),
+        .led_cfg(led_cfg), .led_tx(led_tx), .led_err(led_err), .led_rx(led_rx)
     );
 
     // GDO0 never arrives within the 1 ms timeout

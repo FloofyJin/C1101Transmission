@@ -34,7 +34,8 @@ module topSystem #(
     input  logic tx_btn,       // btn1
     input  logic cfg_btn,      // btn2
     input  logic sw_auto,      // sw0
-    input  logic sw_onlySend,  // sw1 -- send-only: radio B is not configured
+    input  logic sw_sender_enable,  // sw1 -- send enabled
+    input  logic sw_receiver_enable,  // sw2 -- receive enabled
 
     output logic cc_sclk,
     output logic cc_mosi,
@@ -82,7 +83,7 @@ module topSystem #(
         .CLK_HZ(CLK_HZ), .POWERUP_US(POWERUP_US), .TX_TIMEOUT_MS(TX_TIMEOUT_MS)
     ) rf_i (
         .sysclk(sysclk), .rst(rst), .tx_btn(tx_btn), .cfg_btn(cfg_btn),
-        .sw_auto(sw_auto), .sw_onlySend(sw_onlySend),
+        .sw_auto(sw_auto), .sw_receiver_enable(sw_receiver_enable), .sw_sender_enable(sw_sender_enable),
         .cc_sclk(cc_sclk), .cc_mosi(cc_mosi), .cc_miso(cc_miso),
         .cc_csn(cc_csn), .cc_gdo2(cc_gdo2),
         .cc_b_sclk(cc_b_sclk), .cc_b_mosi(cc_b_mosi), .cc_b_miso(cc_b_miso),

@@ -1,0 +1,16 @@
+../Core/Src/cc1101.c:86:20:cs_low	8	static
+../Core/Src/cc1101.c:87:20:cs_high	8	static
+../Core/Src/cc1101.c:89:16:xfer	32	static
+../Core/Src/cc1101.c:105:13:wait_ready	16	static
+../Core/Src/cc1101.c:113:13:cc_write_reg	16	static
+../Core/Src/cc1101.c:122:16:cc_read_reg	24	static
+../Core/Src/cc1101.c:133:9:cc1101_read_status	24	static
+../Core/Src/cc1101.c:145:13:cc_strobe	16	static
+../Core/Src/cc1101.c:159:13:cc_write_fifo	24	static
+../Core/Src/cc1101.c:172:6:cc1101_init	32	static
+../Core/Src/cc1101.c:208:6:cc1101_selftest	16	static
+../Core/Src/cc1101.c:214:25:cc1101_last_diag	4	static
+../Core/Src/cc1101.c:223:13:tx_raw	24	static
+../Core/Src/cc1101.c:289:6:cc1101_send_test_packet	16	static
+../Core/Src/cc1101.c:302:6:cc1101_send_points	80	static
+../Core/Src/cc1101.c:322:6:cc1101_send_frame	24	static
