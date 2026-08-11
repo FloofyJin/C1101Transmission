@@ -42,8 +42,17 @@ module PointRam #(
 
     // Zeroed so simulation does not start at X and so an un-uploaded display
     // parks the beam at the origin rather than somewhere random.
+    //
+    // Then seeded with a triangle. This is the M11 test pattern, and putting it
+    // HERE rather than in a separate ROM means scanout is exercised over the
+    // real data path -- an RF upload simply overwrites these three entries, so
+    // M11 and M14 share one code path instead of proving two different things.
+    // Vivado turns this into BRAM INIT strings.
     initial begin
         for (int i = 0; i < N_POINTS; i++) mem[i] = '0;
+        mem[0] = {8'd128, 8'd230, 2'b11};   // apex
+        mem[1] = {8'd30,  8'd40,  2'b11};   // bottom left
+        mem[2] = {8'd226, 8'd40,  2'b11};   // bottom right
     end
 
     always_ff @(posedge clk) begin

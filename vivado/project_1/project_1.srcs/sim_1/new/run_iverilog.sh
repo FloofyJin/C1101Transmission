@@ -22,12 +22,13 @@ rtl=(
     "$src/RxSeq.sv"
     "$src/PointRam.sv"
     "$src/Mcp4922Driver.sv"
+    "$src/ScanoutEngine.sv"
     "$src/topRF.sv"
     "$here/cc1101_model.sv"
 )
 
 fail=0
-for tb in tb_topRF tb_topRF_timeout tb_rx_points tb_mcp4922; do
+for tb in tb_topRF tb_topRF_timeout tb_rx_points tb_mcp4922 tb_scanout; do
     echo "=============== $tb ==============="
     iverilog -g2012 -o "$out/$tb.vvp" -s "$tb" "${rtl[@]}" "$here/$tb.sv"
     vvp "$out/$tb.vvp" || fail=1

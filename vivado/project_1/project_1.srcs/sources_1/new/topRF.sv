@@ -298,24 +298,20 @@ module topRF #(
     // ================= POINT RAM =================
     // The coordinate list. RxSeq writes it; ScanoutEngine will read it at M11.
     //
-    // Until ScanoutEngine exists the read port has no consumer, and an
-    // unread RAM is optimised away entirely -- so the sweep counter below is
-    // load-bearing for now, not just debug. It also happens to be the readback
-    // tool: 255 entries at 125 MHz is 2.04 us, and the ILA holds 4096 samples
-    // = 32.77 us, so ONE capture contains ~16 complete passes over the RAM.
-    // Trigger on pt_sweep == <index> to inspect any single entry.
-    (* mark_debug = "true" *) logic [7:0]  pt_sweep;
+    // The read port belongs to ScanoutEngine, which walks it forever. Probing
+    // pt_raddr/pt_rdata on the ILA shows the corners actually being drawn.
+    //
+    // (Before ScanoutEngine existed, a free-running counter drove raddr purely
+    // so the RAM had a consumer -- an unread BRAM is optimised away entirely.
+    // That counter also dumped all 255 entries into one ILA capture, which was
+    // how M14 was verified. Restore it temporarily if you need that view back.)
+    (* mark_debug = "true" *) logic [7:0]  pt_raddr;
     (* mark_debug = "true" *) logic [17:0] pt_rdata;
-
-    always_ff @(posedge sysclk) begin
-        if (rst) pt_sweep <= 8'd0;
-        else     pt_sweep <= (pt_sweep == 8'd254) ? 8'd0 : pt_sweep + 8'd1;
-    end
 
     PointRam #(.N_POINTS(255), .DWELL_BITS(2)) pram (
         .clk(sysclk),
         .we(pt_we), .waddr(pt_addr), .wdata(pt_data),
-        .raddr(pt_sweep), .rdata(pt_rdata)
+        .raddr(pt_raddr), .rdata(pt_rdata)
     );
 
     // --- who owns radio B's command bus ---
@@ -335,21 +331,37 @@ module topRF #(
         end
     end
 
-    logic draw_point;
-    (* mark_debug = "true" *) logic draw_point_done, drawing_busy;
-    logic [15:0] pulse_cnt;
-    always_ff @(posedge sysclk) begin
-        if (rst) begin pulse_cnt <= 0; draw_point <= 0; end
-        else begin
-            draw_point <= (pulse_cnt == 0);      // ~1.9 kHz refresh
-            pulse_cnt  <= pulse_cnt + 1;
-        end
-    end
-    // --- MCP4922 connection to JD pmod ---
+    // ================= DISPLAY =================
+    // ScanoutEngine walks PointRam and interpolates; Mcp4922Driver turns each
+    // point into two SPI words and an LDAC pulse. Free-running -- the radio
+    // never gates it, which is the whole reason a ~36 fps upload can coexist
+    // with a >=60 Hz refresh.
+    //
+    // N_ACTIVE is the number of corners drawn. 3 is the triangle seeded into
+    // PointRam's initial block for M11. It should eventually track whatever the
+    // RF side last loaded; hardcoded until there is a frame to load.
+    localparam int N_ACTIVE = 3;
+    localparam int STEPS    = 16;      // raise to 32 once the sustained point
+                                       // rate is measured -- see JOURNAL
+
+    logic        draw_point, draw_point_done;
+    (* mark_debug = "true" *) logic [11:0] draw_x, draw_y;
+    (* mark_debug = "true" *) logic [7:0]  sc_corner;
+    (* mark_debug = "true" *) logic [15:0] sc_frames;
+
+    ScanoutEngine #(.N_POINTS(255), .STEPS(STEPS)) scan (
+        .clk(sysclk), .rst(rst),
+        .n_active(8'(N_ACTIVE)),
+        .raddr(pt_raddr), .rdata(pt_rdata),
+        .start(draw_point), .x(draw_x), .y(draw_y), .done(draw_point_done),
+        .corner_idx(sc_corner), .frame_count(sc_frames)
+    );
+
+    // --- MCP4922 on Pmod JD ---
     Mcp4922Driver #() dacDriver (
-        .clk(sysclk), .rst(rst), .start(draw_point), 
-        .x(12'h800), .y(12'h800), .done(draw_point_done), 
-        .busy(drawing_busy), .dac_cs(dac_cs), .dac_ldac(dac_ldac), 
+        .clk(sysclk), .rst(rst), .start(draw_point),
+        .x(draw_x), .y(draw_y), .done(draw_point_done),
+        .busy(), .dac_cs(dac_cs), .dac_ldac(dac_ldac),
         .dac_sclk(dac_sclk), .dac_sdi(dac_sdi)
     );
 
