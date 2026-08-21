@@ -30,10 +30,14 @@ module cc1101_model #(
     reg [7:0] regs [0:63];
     reg [7:0] fifo [0:63];
 
-    // RX FIFO. Sized past the 64-byte hardware limit so an over-long injected
-    // frame overruns the TEST rather than the array, which would be an
-    // out-of-bounds write and silently corrupt neighbouring simulation state.
-    reg [7:0] rx_fifo [0:127];
+    // RX FIFO -- exactly 64 bytes, like the real part.
+    //
+    // This was 128 bytes once, "so an over-long injected frame overruns the
+    // test rather than the array". That hid the exact constraint it should
+    // have enforced: a 30-point packet needs 1 len + 62 payload + 2 status =
+    // 65 bytes and DOES overflow real silicon, but passed in simulation.
+    // rx_deliver() now asserts instead.
+    reg [7:0] rx_fifo [0:63];
     reg [7:0] rxbytes;
     reg [7:0] rx_rd_ptr;
 
@@ -69,7 +73,7 @@ module cc1101_model #(
         n_seen    = 0;
         rxbytes   = 8'h00;
         rx_rd_ptr = 8'h00;
-        for (i = 0; i < 128; i = i + 1) rx_fifo[i] = 8'h00;
+        for (i = 0; i < 64; i = i + 1) rx_fifo[i] = 8'h00;
     end
 
     function [7:0] status_read(input [5:0] a);
@@ -195,6 +199,13 @@ module cc1101_model #(
     // never strobe STX on an instance you are also injecting into.
     task rx_deliver(input [7:0] n);
         begin
+            if (n > 8'd64) begin
+                $display("  MODEL ERROR: rx_deliver(%0d) overflows the 64-byte RX FIFO.",
+                         n);
+                $display("               1 len + payload + 2 status must be <= 64,");
+                $display("               so payload <= 61 bytes = 28 points + 3 header.");
+                $fatal(1);
+            end
             rxbytes   = n;
             rx_rd_ptr = 8'd0;
             marcstate = 8'h0D;          // RX

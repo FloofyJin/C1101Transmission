@@ -53,6 +53,7 @@ module topSystem #(
     output logic dac_sdi,
     output logic dac_ldac,
     output logic dac_sclk,
+    output logic z_blank,      // JD7 -> scope EXT Z AXIS IN
 
     output logic led_cfg,
     output logic led_tx,
@@ -94,6 +95,7 @@ module topSystem #(
         .cc_b_sclk(cc_b_sclk), .cc_b_mosi(cc_b_mosi), .cc_b_miso(cc_b_miso),
         .cc_b_csn(cc_b_csn), .cc_b_gdo2(cc_b_gdo2),
         .dac_cs(dac_cs), .dac_sdi(dac_sdi), .dac_ldac(dac_ldac), .dac_sclk(dac_sclk),
+        .z_blank(z_blank),
         .led_cfg(led_cfg), .led_tx(led_tx), .led_err(led_err), .led_rx(led_rx)
     );
 

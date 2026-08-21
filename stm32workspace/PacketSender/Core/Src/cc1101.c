@@ -222,7 +222,7 @@ const cc1101_tx_diag_t *cc1101_last_diag(void)
  */
 static bool tx_raw(const uint8_t *payload, uint8_t len)
 {
-    if (len == 0 || len > CC_FIFO_MAX) return false;
+    if (len == 0 || len > CC_PAYLOAD_MAX) return false;
 
     memset(&diag, 0, sizeof(diag));
 
@@ -299,18 +299,25 @@ bool cc1101_send_test_packet(void)
     return tx_raw(payload, sizeof(payload));
 }
 
-bool cc1101_send_points(uint8_t start_index, const cc1101_point_t *pts, uint8_t count)
+bool cc1101_send_points(uint16_t start_index, const cc1101_point_t *pts,
+                        uint8_t count, bool end_of_frame)
 {
     uint8_t payload[CC_PKT_HDR + 2 * CC_MAX_POINTS];
 
     if (pts == NULL || count == 0 || count > CC_MAX_POINTS) return false;
 
-    /* Never let a packet address past the end of the receiver's PointRam.
-       start_index is 8-bit and so is the sum, so this would wrap silently. */
-    if ((uint16_t)start_index + count > CC_FRAME_POINTS) return false;
+    /* Must be even: points are span endpoints, and splitting a span across a
+       packet boundary means a lost packet leaves a dangling endpoint, which
+       draws a line clean across the image. */
+    if (count & 1u) return false;
 
-    payload[0] = start_index;
-    payload[1] = count;
+    /* Never address past the end of the receiver's PointRam. */
+    if ((uint32_t)start_index + count > CC_FRAME_POINTS) return false;
+
+    payload[0] = (uint8_t)(start_index >> 8);      /* big-endian, matching RxSeq */
+    payload[1] = (uint8_t)(start_index & 0xFF);
+    payload[2] = (uint8_t)(count | (end_of_frame ? CC_EOF_FLAG : 0));
+
     for (uint8_t i = 0; i < count; i++) {
         payload[CC_PKT_HDR + 2*i    ] = pts[i].x;
         payload[CC_PKT_HDR + 2*i + 1] = pts[i].y;
@@ -319,25 +326,25 @@ bool cc1101_send_points(uint8_t start_index, const cc1101_point_t *pts, uint8_t 
     return tx_raw(payload, (uint8_t)(CC_PKT_HDR + 2 * count));
 }
 
-bool cc1101_send_frame(const cc1101_point_t *pts, uint8_t n_points)
+bool cc1101_send_frame(const cc1101_point_t *pts, uint16_t n_points)
 {
     bool all_ok = true;
 
-    if (pts == NULL || n_points == 0) return false;
-
-    /* No clamp against CC_FRAME_POINTS needed: n_points is uint8_t, so 255 is
-       already its maximum, and PointRam's valid indices are 0..254. Widening
-       this type later means adding the bound back -- cc1101_send_points()
-       rejects an over-range packet regardless, so the failure stays contained. */
+    if (pts == NULL || n_points == 0)        return false;
+    if (n_points & 1u)                       return false;   /* spans are pairs */
+    if (n_points > CC_FRAME_POINTS)          return false;
 
     for (uint16_t i = 0; i < n_points; i += CC_MAX_POINTS) {
-        uint8_t chunk = (uint8_t)((n_points - i > CC_MAX_POINTS)
-                                  ? CC_MAX_POINTS : (n_points - i));
+        uint16_t left  = (uint16_t)(n_points - i);
+        uint8_t  chunk = (uint8_t)((left > CC_MAX_POINTS) ? CC_MAX_POINTS : left);
+        bool     last  = (uint16_t)(i + chunk) >= n_points;
 
         /* Keep going after a failure. The format is self-healing: a dropped
            packet leaves a few stale coordinates that the next pass repairs,
-           so abandoning the rest of the frame only makes the gap bigger. */
-        if (!cc1101_send_points((uint8_t)i, &pts[i], chunk))
+           so abandoning the rest of the frame only makes the gap bigger.
+           The exception is the LAST packet -- if that one is lost the display
+           simply does not swap, and the previous frame stays up one period. */
+        if (!cc1101_send_points(i, &pts[i], chunk, last))
             all_ok = false;
     }
     return all_ok;

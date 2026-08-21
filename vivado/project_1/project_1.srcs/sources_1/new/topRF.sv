@@ -60,6 +60,12 @@ module topRF #(
     output logic dac_ldac,
     output logic dac_sclk,
 
+    // Oscilloscope Z axis (Pmod JD7). 1 = beam off.
+    // Goes straight to the scope's rear EXT Z AXIS IN -- NOT to the DAC. No
+    // series resistor: 3.3 V into the ~500 ohm input is 6.6 mA, inside Zynq
+    // limits, and overdriving past the 2 V p-p "full range" only blanks harder.
+    output logic z_blank,
+
     output logic led_cfg,      // LD0: both radios configured OK
     output logic led_tx,       // LD1: last packet transmitted OK
     output logic led_err,      // LD2: gdo2 timeout
@@ -243,14 +249,40 @@ module topRF #(
     (* mark_debug = "true" *) logic        b_pkt_ok, b_crc_ok, b_overflow, b_rx_timeout;
     (* mark_debug = "true" *) logic        b_fmt_ok, b_bad_fmt;
     (* mark_debug = "true" *) logic [7:0]  b_rxbytes, b_len_byte;
-    (* mark_debug = "true" *) logic [7:0]  b_start_index, b_count, b_rssi;
+    (* mark_debug = "true" *) logic [15:0] b_start_index;
+    (* mark_debug = "true" *) logic [7:0]  b_count, b_rssi;
     (* mark_debug = "true" *) logic [6:0]  b_lqi;
     (* mark_debug = "true" *) logic [15:0] b_rx_count, b_err_count, b_pt_writes;
 
     // ---- PointRam write port, driven by RxSeq ----
-    (* mark_debug = "true" *) logic        pt_we;
-    (* mark_debug = "true" *) logic [7:0]  pt_addr;
-    (* mark_debug = "true" *) logic [17:0] pt_data;
+    localparam int PT_N     = 1024;              // points per bank
+    localparam int PT_IDX_W = $clog2(PT_N);      // 10
+
+    (* mark_debug = "true" *) logic                pt_we;
+    (* mark_debug = "true" *) logic [PT_IDX_W:0]   pt_addr;
+    (* mark_debug = "true" *) logic [17:0]         pt_data;
+
+    // ---- double-buffer handshake ----
+    (* mark_debug = "true" *) logic                b_frame_ready;
+    (* mark_debug = "true" *) logic [PT_IDX_W:0]   b_frame_points;
+    (* mark_debug = "true" *) logic                sc_wrap;
+    (* mark_debug = "true" *) logic                rd_bank;
+    (* mark_debug = "true" *) logic [PT_IDX_W:0]   n_active_reg;
+
+    // Swap ONLY at the scanout's wrap. Flipping mid-pass would move the tear
+    // rather than remove it -- same reason a framebuffer swaps on vsync.
+    wire do_swap = sc_wrap & b_frame_ready;
+
+    always_ff @(posedge sysclk) begin
+        if (rst) begin
+            rd_bank      <= 1'b0;
+            n_active_reg <= (PT_IDX_W+1)'(1024); // the seeded checkerboard:
+                                                  // 128 rows x 4 spans x 2 points
+        end else if (do_swap) begin
+            rd_bank      <= ~rd_bank;
+            n_active_reg <= b_frame_points;
+        end
+    end
 
     // --- config mission ---
     (* mark_debug = "true" *) logic       b_config_ok, b_cfg_done, b_cfg_busy;
@@ -284,6 +316,8 @@ module topRF #(
         .rx_strobe(b_rx_strobe),
         .gdo2(b_gdo2_s),
         .pt_we(pt_we), .pt_addr(pt_addr), .pt_data(pt_data),
+        .frame_ready(b_frame_ready), .frame_points(b_frame_points),
+        .frame_ack(do_swap),
         .busy(b_rx_busy), .done(b_rx_done),
         .pkt_ok(b_pkt_ok), .crc_ok(b_crc_ok),
         .fmt_ok(b_fmt_ok), .bad_fmt(b_bad_fmt),
@@ -305,10 +339,10 @@ module topRF #(
     // so the RAM had a consumer -- an unread BRAM is optimised away entirely.
     // That counter also dumped all 255 entries into one ILA capture, which was
     // how M14 was verified. Restore it temporarily if you need that view back.)
-    (* mark_debug = "true" *) logic [7:0]  pt_raddr;
+    (* mark_debug = "true" *) logic [PT_IDX_W:0] pt_raddr;
     (* mark_debug = "true" *) logic [17:0] pt_rdata;
 
-    PointRam #(.N_POINTS(255), .DWELL_BITS(2)) pram (
+    PointRam #(.N_POINTS(PT_N), .DWELL_BITS(2)) pram (
         .clk(sysclk),
         .we(pt_we), .waddr(pt_addr), .wdata(pt_data),
         .raddr(pt_raddr), .rdata(pt_rdata)
@@ -337,24 +371,32 @@ module topRF #(
     // never gates it, which is the whole reason a ~36 fps upload can coexist
     // with a >=60 Hz refresh.
     //
-    // N_ACTIVE is the number of corners drawn. 3 is the triangle seeded into
-    // PointRam's initial block for M11. It should eventually track whatever the
-    // RF side last loaded; hardcoded until there is a frame to load.
-    localparam int N_ACTIVE = 3;
-    localparam int STEPS    = 16;      // raise to 32 once the sustained point
-                                       // rate is measured -- see JOURNAL
+    // n_active is the number of points drawn, latched from RxSeq's
+    // max(start_index + count) at each buffer swap -- so the vectorizer picks
+    // the fps/detail trade per frame with no RTL change. It resets to 1024 to
+    // match the 128 x 8 checkerboard seeded into BOTH PointRam banks (128 rows
+    // x 4 spans x 2 points), which is what is on screen before any RF arrives.
+    //
+    // SPACING is the distance between consecutive DAC points, in 8-bit
+    // coordinate units. It MUST be a power of two -- the step count rounds up
+    // to 2^k so the divide is a shift -- which makes the real choice 4 or 8.
+    // Lower it if spans break into visible dots; raise it if the sustained
+    // point rate cannot keep up at 60 Hz.
+    localparam int SPACING  = 4;       // coordinate units between DAC points
 
     logic        draw_point, draw_point_done;
     (* mark_debug = "true" *) logic [11:0] draw_x, draw_y;
-    (* mark_debug = "true" *) logic [7:0]  sc_corner;
+    (* mark_debug = "true" *) logic [PT_IDX_W-1:0] sc_corner;
     (* mark_debug = "true" *) logic [15:0] sc_frames;
 
-    ScanoutEngine #(.N_POINTS(255), .STEPS(STEPS)) scan (
+    ScanoutEngine #(.N_POINTS(PT_N), .SPACING(SPACING)) scan (
         .clk(sysclk), .rst(rst),
-        .n_active(8'(N_ACTIVE)),
+        .n_active(n_active_reg),
+        .rd_bank(rd_bank), .restart(do_swap),
         .raddr(pt_raddr), .rdata(pt_rdata),
         .start(draw_point), .x(draw_x), .y(draw_y), .done(draw_point_done),
-        .corner_idx(sc_corner), .frame_count(sc_frames)
+        .z_blank(z_blank),
+        .corner_idx(sc_corner), .wrap(sc_wrap), .frame_count(sc_frames)
     );
 
     // --- MCP4922 on Pmod JD ---

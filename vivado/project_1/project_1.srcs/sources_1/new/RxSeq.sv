@@ -11,15 +11,37 @@
 // ---- what is actually in the FIFO ----
 // With PKTCTRL0 = 0x05 (variable length) and PKTCTRL1 = 0x04 (append status):
 //
-//     [len] [start_index] [count] [x0][y0] ... [RSSI] [LQI | CRC_OK<<7]
-//      ^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^
-//      chip           len bytes of payload           chip-appended
+//     [len] [idx_hi][idx_lo][count] [x0][y0] ... [RSSI] [LQI | CRC_OK<<7]
+//      ^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^
+//      chip            len bytes of payload             chip-appended
 //
 // Note the sender's 0x7F burst-write header is NOT here and never was -- that
 // byte only ever existed on the transmitter's own SPI bus. Likewise this side's
 // 0xFF read header is consumed by the driver.
 //
-// So a 30-point packet is 1 + 62 + 2 = 65 bytes, which is why RX_MAX is 65.
+// So a 28-point packet is 1 + 59 + 2 = 62 bytes, which is why RX_MAX is 62.
+//
+// ---- why 28 points, and why the RX FIFO is the binding limit ----
+// Both FIFOs are 64 bytes, but the RECEIVING chip appends two status bytes
+// into its own FIFO (datasheet 15.3.3), so:
+//
+//     TX:  1 len + payload            <= 64  ->  payload <= 63
+//     RX:  1 len + payload + 2 status <= 64  ->  payload <= 61   <- binds
+//
+// And the count must be EVEN, because scanline fill sends points in PAIRS. An
+// odd count splits a span across a packet boundary; lose that packet and one
+// endpoint comes from the new frame while its partner is two frames stale,
+// which draws a line straight across the image. An even count means a lost
+// packet costs a whole span -- one missing row, nearly invisible.
+//
+// ---- double buffering ----
+// count[7] marks the last packet of a frame. RxSeq raises frame_ready and
+// publishes frame_points; topRF swaps banks at the SCANOUT's wrap, never
+// mid-pass (that would move the tear rather than remove it), then pulses
+// frame_ack.
+//
+// If the end-of-frame packet is lost, no swap happens and the previous frame
+// stays up one extra period -- a far better failure than half a frame.
 //
 // ---- why the payload is staged instead of written straight through ----
 // CRC_OK arrives in the LAST byte of the burst, after every payload byte has
@@ -50,15 +72,14 @@
 //------------------------------------------------------------------------------
 module RxSeq #(
     parameter int CLK_HZ     = 125_000_000,
-    parameter int MAX_POINTS = 30,          // (63 - 2) / 2, the TX FIFO ceiling
-    parameter int N_POINTS   = 255,         // PointRam depth
-    parameter int RX_MAX     = 65,          // 1 len + 60 payload + 1 starting index + count + 2 status (CRC/LQI + RSSI)
+    parameter int MAX_POINTS = 28,          // EVEN (spans are pairs), and <= (61-3)/2
+    parameter int N_POINTS   = 1024,        // PointRam depth PER BANK
+    parameter int RX_MAX     = 62,          // 1 len + 59 payload + 2 status
     parameter int END_TIMEOUT_MS = 200,     // gdo2 stuck high -> give up
-    // Dwell is not transmitted -- every committed point gets this value. The
-    // encoding is defined by ScanoutEngine (M12); until then it is inert.
-    // Make it a register there rather than a literal, so M12 can sweep it live
-    // over the ILA to find the value that lights lines evenly.
-    parameter logic [1:0] DWELL_DEFAULT = 2'b11
+    // Blanking is DERIVED in ScanoutEngine (it needs both endpoints of a
+    // segment, which RxSeq never has at once). These two bits are reserved as
+    // a future explicit override and are written as zero.
+    parameter logic [1:0] BLANK_DEFAULT = 2'b00
 )(
     input  logic       clk,
     input  logic       rst,
@@ -82,9 +103,17 @@ module RxSeq #(
     input  logic       gdo2,          // MUST already be synchronized to clk
 
     // ---- PointRam write port ----
-    output logic        pt_we,
-    output logic [7:0]  pt_addr,
-    output logic [17:0] pt_data,      // {x, y, dwell}
+    output logic             pt_we,
+    output logic [IDX_W:0]   pt_addr,     // {bank, index}
+    output logic [17:0]      pt_data,     // {x, y, blank, reserved}
+
+    // ---- double buffering ----
+    output logic             frame_ready,   // level: a complete frame has landed
+    // IDX_W+1 bits, not IDX_W: a frame using every entry has 1024 points, and
+    // 1024 does not fit in 10 bits. Truncating it to 0 would silently blank
+    // the display on exactly the largest frame.
+    output logic [IDX_W:0]   frame_points,  // max(start_index+count) of that frame
+    input  logic             frame_ack,     // topRF took it; clears frame_ready
 
     // status / ILA
     output logic        busy,
@@ -97,8 +126,8 @@ module RxSeq #(
     output logic        timeout,       // gdo2 rose but never fell (sticky)
     output logic [7:0]  rxbytes,       // what RXBYTES reported
     output logic [7:0]  len_byte,      // first FIFO byte = payload length
-    output logic [7:0]  start_index,   // payload byte 0
-    output logic [7:0]  count,         // payload byte 1
+    output logic [15:0] start_index,   // payload bytes 0-1, big-endian
+    output logic [7:0]  count,         // payload byte 2 (bit 7 = end of frame)
     output logic [7:0]  rssi,          // status byte 1
     output logic [6:0]  lqi,           // status byte 2, bits 6:0
     output logic [15:0] rx_count,      // packets that passed pkt_ok
@@ -107,8 +136,11 @@ module RxSeq #(
 );
     import cc1101_pkg::*;
 
+    localparam int IDX_W = $clog2(N_POINTS);
+
     localparam int TO_CYCLES = (CLK_HZ / 1000) * END_TIMEOUT_MS;
     localparam logic [7:0] MAX_PTS8 = MAX_POINTS[7:0];
+    logic wr_bank;                       // RxSeq writes ~scanout's bank
 
     typedef enum logic [4:0] {
         R_IDLE,
@@ -130,7 +162,7 @@ module RxSeq #(
     logic [7:0]  rxb_prev;    // previous RXBYTES sample, for the agree-twice test
     logic [7:0]  n_read;      // clamped byte count actually clocked out
     logic        gdo2_d;      // for edge detection
-    logic [7:0]  st_i;        // replay index during R_STORE
+    logic [IDX_W-1:0] st_i;   // replay index during R_STORE (address-width)
 
     // Payload staging. Split into two arrays so a point's x and y can be read
     // in the SAME cycle during the replay -- one array would need two read
@@ -140,20 +172,34 @@ module RxSeq #(
 
     assign rx_len = n_read;
 
-    // FIFO layout by rx_idx:  0 = len, 1 = start_index, 2 = count,
-    // So we ignore the first 3 idx. Then since theres x and y, we divide by 2
-    wire [7:0] pt_k  = (rx_idx - 8'd3) >>1; // coordinate count
-    wire       is_x  = rx_idx[0];      // 3,5,7,... are x; 4,6,8,... are y
+    // FIFO layout by rx_idx:
+    //   0 = len, 1 = idx_hi, 2 = idx_lo, 3 = count, 4.. = coordinate pairs
+    //
+    // Coordinates begin at rx_idx 4, two bytes per point:
+    //     rx_idx  4  5   6  7   8  9
+    //     point   0  0   1  1   2  2
+    //     field   x  y   x  y   x  y
+    //
+    // Note this flipped when the index went from 1 to 2 bytes -- x used to sit
+    // on ODD rx_idx and now sits on EVEN.
+    wire [7:0] pt_k  = (rx_idx - 8'd4) >> 1;
+    wire       is_x  = ~rx_idx[0];     // 4,6,8,... are x; 5,7,9,... are y
 
     // Format verdict. Every field is cross-checked against every other, because
     // a CRC-good packet can still be malformed if the SENDER is wrong -- and
     // that failure looks identical to an RF problem unless it is separated out.
-    // len_byte must equal 2 + 2*count, or the packet is internally inconsistent.
-    wire [8:0] end_index = {1'b0, start_index} + {1'b0, count};
-    wire fmt_ok_w = (count != 8'd0)
-                 && (count <= MAX_PTS8)
-                 && (len_byte == (8'd2 + {count[6:0], 1'b0}))
-                 && (end_index <= N_POINTS[8:0]);
+    // len_byte must equal 3 + 2*count (2-byte start_index + 1-byte count, then
+    // two bytes per point), or the packet is internally inconsistent.
+    // count[7] is the end-of-frame flag; the point count is count[6:0].
+    wire [7:0]  n_pts     = {1'b0, count[6:0]};
+    wire        eof_flag  = count[7];
+    wire [16:0] end_index = {1'b0, start_index} + {9'd0, n_pts};
+
+    wire fmt_ok_w = (n_pts != 8'd0)
+                 && (n_pts <= MAX_PTS8)
+                 && (n_pts[0] == 1'b0)                       // spans are PAIRS
+                 && (len_byte == (8'd3 + {n_pts[6:0], 1'b0}))
+                 && (end_index <= {1'b0, N_POINTS[15:0]});
 
     always_ff @(posedge clk) begin
         if (rst) begin
@@ -163,17 +209,28 @@ module RxSeq #(
             pkt_ok    <= 1'b0; crc_ok <= 1'b0; fmt_ok <= 1'b0; bad_fmt <= 1'b0;
             overflow  <= 1'b0; timeout <= 1'b0;
             rxbytes   <= 8'h00; len_byte <= 8'h00;
-            start_index <= 8'h00; count <= 8'h00;
+            start_index <= 16'h0000; count <= 8'h00;
+            wr_bank   <= 1'b1;          // scanout starts on bank 0
+            frame_ready  <= 1'b0;
+            frame_points <= '0;
             rssi      <= 8'h00; lqi <= 7'h00;
             rx_count  <= 16'd0; err_count <= 16'd0; pt_writes <= 16'd0;
             tmr       <= 32'd0; rxb_prev <= 8'h00; n_read <= 8'h00;
-            gdo2_d    <= 1'b0; st_i <= 8'd0;
+            gdo2_d    <= 1'b0; st_i <= '0;
             pt_we     <= 1'b0; pt_addr <= 8'h00; pt_data <= 18'd0;
         end else begin
             cmd_valid <= 1'b0;      // one-cycle-pulse defaults
             done      <= 1'b0;
             pt_we     <= 1'b0;
             gdo2_d    <= gdo2;
+
+            // topRF took the frame: flip to the other bank and start measuring
+            // the next frame's extent from scratch.
+            if (frame_ack) begin
+                frame_ready  <= 1'b0;
+                wr_bank      <= ~wr_bank;
+                frame_points <= '0;
+            end
 
             // ---- latch FIFO bytes as the driver hands them up ----
             // The status bytes are tested BEFORE the payload branches, so a
@@ -187,9 +244,11 @@ module RxSeq #(
                     crc_ok <= rx_byte[7];
                 end else if (rx_idx == n_read - 8'd2) begin
                     rssi <= rx_byte;
-                end else if (rx_idx == 8'd1) begin // Second: starting index
-                    start_index <= rx_byte;
-                end else if (rx_idx == 8'd2) begin // Third: How many xy coords there are
+                end else if (rx_idx == 8'd1) begin      // index, big-endian
+                    start_index[15:8] <= rx_byte;
+                end else if (rx_idx == 8'd2) begin
+                    start_index[7:0]  <= rx_byte;
+                end else if (rx_idx == 8'd3) begin      // count, bit 7 = end of frame
                     count <= rx_byte;
                 end else if (pt_k < MAX_PTS8) begin // Coordinates
                     if (is_x) stage_x[pt_k[4:0]] <= rx_byte;
@@ -305,7 +364,7 @@ module RxSeq #(
                     if (crc_ok && fmt_ok_w) begin
                         pkt_ok   <= 1'b1;
                         rx_count <= rx_count + 16'd1;
-                        st_i     <= 8'd0;
+                        st_i     <= '0;
                         rstate   <= R_STORE;
                     end else begin
                         // Separating these two is the point of bad_fmt: a CRC
@@ -323,14 +382,21 @@ module RxSeq #(
                 // (240 ns). The radio cannot deliver the next packet for at
                 // least ~3 ms, so this is free.
                 R_STORE: begin
-                    if (st_i < count) begin
+                    if (st_i < {{(IDX_W-8){1'b0}}, n_pts}) begin
                         pt_we     <= 1'b1;
-                        pt_addr   <= start_index + st_i;
+                        // Written into the bank the scanout is NOT reading.
+                        pt_addr   <= {wr_bank, (start_index[IDX_W-1:0] + st_i)};
                         pt_data   <= {stage_x[st_i[4:0]], stage_y[st_i[4:0]],
-                                      DWELL_DEFAULT};
-                        st_i      <= st_i + 8'd1;
+                                      BLANK_DEFAULT};
+                        st_i      <= st_i + 1'b1;
                         pt_writes <= pt_writes + 16'd1;
                     end else begin
+                        // Track how far this frame reaches, so n_active can be
+                        // published without the RF side having to say.
+                        if (end_index[IDX_W:0] > frame_points)
+                            frame_points <= end_index[IDX_W:0];
+                        // Last packet of the frame -- offer it to the display.
+                        if (eof_flag) frame_ready <= 1'b1;
                         rstate <= R_DONE;
                     end
                 end

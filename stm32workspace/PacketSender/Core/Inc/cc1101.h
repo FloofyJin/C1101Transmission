@@ -46,29 +46,33 @@
  * POINT PACKET FORMAT
  * ---------------------------------------------------------------------------
  *
- *   payload = 62 bytes max, carried in ONE radio packet
- *   +-------------+-------+----+----+----+----+-----+
- *   | start_index | count | x0 | y0 | x1 | y1 | ... |
- *   |     1 B     |  1 B  |      2 B per point      |
- *   +-------------+-------+----+----+----+----+-----+
+ *   payload = 59 bytes, carried in ONE radio packet
+ *   +---------------+-------+----+----+----+----+-----+
+ *   |  start_index  | count | x0 | y0 | x1 | y1 | ... |
+ *   |      2 B      |  1 B  |       2 B per point     |
+ *   +---------------+-------+----+----+----+----+-----+
  *
- * 30 points per packet means 30 XY PAIRS, not 30 bytes. The chip adds preamble,
+ * 28 points per packet means 28 XY PAIRS, not 28 bytes. The chip adds preamble,
  * sync, length and CRC itself -- never write those.
  *
- * Why 30 is the ceiling: the TX FIFO is 64 bytes and in variable-length mode
- * the length byte occupies one of them, leaving 63 for payload. The whole
- * packet is written before STX with no mid-transmit refill, so payload <= 63.
- * 2 + 30*2 = 62, one byte spare.
+ * Why 28 and not 30: the RECEIVE FIFO binds, not the transmit one. See the
+ * CC_MAX_POINTS block below.
  *
- * A full 255-point frame is 9 packets: 8 x count=30 plus 1 x count=15.
+ * count[7] marks the LAST packet of a frame, which tells the receiver to swap
+ * display buffers. Without it the display would show a frame that is part old
+ * and part new, with a tear line sweeping down the image.
+ *
+ * Points are SPAN ENDPOINTS -- scanline fill sends (xL,y) then (xR,y) for each
+ * horizontal run of the shape, so n_points is always even.
  *
  * Two properties worth protecting:
  *   - Idempotent.   Sending the same packet twice changes nothing.
  *   - Self-healing. A lost packet leaves a few stale coordinates; the next pass
  *                   over that index range repairs them. No ACKs, no retries.
  *
- * Dwell is NOT transmitted. x and y fill both payload bytes exactly; the FPGA
- * fills dwell from a parameter. See ARCHITECTURE.md "Dwell is FPGA-side".
+ * Blanking is NOT transmitted. x and y fill both payload bytes exactly, and the
+ * FPGA derives blanking from the scanline structure -- it needs both endpoints
+ * of a segment, which the receiver never has at once anyway.
  */
 #ifndef INC_CC1101_H_
 #define INC_CC1101_H_
@@ -153,10 +157,31 @@
 #endif
 
 /* ---- packet geometry ---- */
-#define CC_FIFO_MAX      63     /* 64-byte FIFO minus the length byte        */
-#define CC_PKT_HDR       2      /* start_index + count                       */
-#define CC_MAX_POINTS    30     /* (63 - 2) / 2, rounded down                */
-#define CC_FRAME_POINTS  255    /* PointRam depth on the Zybo side           */
+/*
+ * The RX FIFO is the binding limit, NOT the TX FIFO. Both are 64 bytes, but the
+ * receiving chip appends two status bytes (RSSI, LQI|CRC_OK) into its own FIFO
+ * -- datasheet 15.3.3 -- so:
+ *
+ *     TX:  1 len + payload            <= 64  ->  payload <= 63
+ *     RX:  1 len + payload + 2 status <= 64  ->  payload <= 61   <- binds
+ *
+ * And the point count must be EVEN, because scanline fill sends points in
+ * PAIRS. An odd count splits a span across a packet boundary; lose that packet
+ * and one endpoint comes from the new frame while its partner is two frames
+ * stale, which draws a line straight across the image. An even count means a
+ * lost packet costs a whole span -- one missing row, nearly invisible.
+ */
+#define CC_PAYLOAD_MAX   61     /* RX FIFO 64 - 1 len - 2 status             */
+#define CC_PKT_HDR       3      /* start_index (2 B) + count (1 B)           */
+#define CC_MAX_POINTS    28     /* EVEN, and <= (61 - 3) / 2                 */
+#define CC_FRAME_POINTS  1024   /* PointRam depth per bank on the Zybo side  */
+
+/* count byte: bits[6:0] = point count, bit 7 = END OF FRAME.
+ * The count never exceeds 28, so bit 7 is free. The last packet of a frame
+ * sets it; the receiver swaps display buffers at its next scanout wrap.
+ * If that packet is lost, no swap happens and the previous frame stays up one
+ * extra period -- a far better failure than showing half a frame. */
+#define CC_EOF_FLAG      0x80
 
 typedef struct {
     uint8_t x;
@@ -201,14 +226,16 @@ bool cc1101_send_test_packet(void);
 
 /* Phase 2: write `count` points into the receiver's PointRam starting at
    `start_index`. count must be 1..CC_MAX_POINTS. */
-bool cc1101_send_points(uint8_t start_index,
+bool cc1101_send_points(uint16_t start_index,
                         const cc1101_point_t *pts,
-                        uint8_t count);
+                        uint8_t count,
+                        bool end_of_frame);
 
-/* Split n_points into ceil(n/30) packets and send them all. Returns false if
-   any packet failed; the rest are still attempted, because a partial frame is
-   repaired by the next pass. */
-bool cc1101_send_frame(const cc1101_point_t *pts, uint8_t n_points);
+/* Split n_points into ceil(n/28) packets and send them all, marking the last
+   one end-of-frame so the display swaps buffers. Returns false if any packet
+   failed; the rest are still attempted, because a partial frame is repaired by
+   the next pass. n_points must be EVEN -- points are span endpoints. */
+bool cc1101_send_frame(const cc1101_point_t *pts, uint16_t n_points);
 
 /* Diagnostics from the most recent transmit. */
 const cc1101_tx_diag_t *cc1101_last_diag(void);
