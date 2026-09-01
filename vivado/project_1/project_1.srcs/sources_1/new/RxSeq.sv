@@ -79,7 +79,7 @@ module RxSeq #(
     // Blanking is DERIVED in ScanoutEngine (it needs both endpoints of a
     // segment, which RxSeq never has at once). These two bits are reserved as
     // a future explicit override and are written as zero.
-    parameter logic [1:0] BLANK_DEFAULT = 2'b00
+    parameter logic [1:0] SPARE_DEFAULT = 2'b00
 )(
     input  logic       clk,
     input  logic       rst,
@@ -105,7 +105,7 @@ module RxSeq #(
     // ---- PointRam write port ----
     output logic             pt_we,
     output logic [IDX_W:0]   pt_addr,     // {bank, index}
-    output logic [17:0]      pt_data,     // {x, y, blank, reserved}
+    output logic [17:0]      pt_data,     // {x, y, spare[1:0]}
 
     // ---- double buffering ----
     output logic             frame_ready,   // level: a complete frame has landed
@@ -136,7 +136,7 @@ module RxSeq #(
 );
     import cc1101_pkg::*;
 
-    localparam int IDX_W = $clog2(N_POINTS);
+    localparam int IDX_W = $clog2(N_POINTS); // 10
 
     localparam int TO_CYCLES = (CLK_HZ / 1000) * END_TIMEOUT_MS;
     localparam logic [7:0] MAX_PTS8 = MAX_POINTS[7:0];
@@ -387,12 +387,12 @@ module RxSeq #(
                         // Written into the bank the scanout is NOT reading.
                         pt_addr   <= {wr_bank, (start_index[IDX_W-1:0] + st_i)};
                         pt_data   <= {stage_x[st_i[4:0]], stage_y[st_i[4:0]],
-                                      BLANK_DEFAULT};
+                                      SPARE_DEFAULT};
                         st_i      <= st_i + 1'b1;
                         pt_writes <= pt_writes + 16'd1;
                     end else begin
-                        // Track how far this frame reaches, so n_active can be
-                        // published without the RF side having to say.
+                        // end_index is the number of points we should have received
+                        // after this payload. count_begin + # points received
                         if (end_index[IDX_W:0] > frame_points)
                             frame_points <= end_index[IDX_W:0];
                         // Last packet of the frame -- offer it to the display.

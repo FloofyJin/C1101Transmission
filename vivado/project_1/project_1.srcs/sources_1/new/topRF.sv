@@ -342,7 +342,7 @@ module topRF #(
     (* mark_debug = "true" *) logic [PT_IDX_W:0] pt_raddr;
     (* mark_debug = "true" *) logic [17:0] pt_rdata;
 
-    PointRam #(.N_POINTS(PT_N), .DWELL_BITS(2)) pram (
+    PointRam #(.N_POINTS(PT_N), .SPARE_BITS(2)) pram (
         .clk(sysclk),
         .we(pt_we), .waddr(pt_addr), .wdata(pt_data),
         .raddr(pt_raddr), .rdata(pt_rdata)

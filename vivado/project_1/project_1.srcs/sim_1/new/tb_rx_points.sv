@@ -60,7 +60,7 @@ module tb_rx_points;
         end
     endtask
 
-    // PointRam entry is {x[7:0], y[7:0], blank, reserved}.
+    // PointRam entry is {x[7:0], y[7:0], spare[1:0]}.
     //
     // Reads the bank RxSeq is WRITING (not the one scanout reads) -- these
     // tests are about the receive path, and the display side is exercised by
@@ -72,7 +72,7 @@ module tb_rx_points;
         int a;
         begin
             a = (dut.rx_b.wr_bank ? PT_N : 0) + idx;
-            e = {ex, ey, 2'b00};        // BLANK_DEFAULT
+            e = {ex, ey, 2'b00};        // SPARE_DEFAULT
             if (dut.pram.mem[a] !== e) begin
                 $display("  FAIL  PointRam[bank%0d][%0d]: got %05h, expected %05h (x=%0d y=%0d)",
                          dut.rx_b.wr_bank, idx, dut.pram.mem[a], e, ex, ey);

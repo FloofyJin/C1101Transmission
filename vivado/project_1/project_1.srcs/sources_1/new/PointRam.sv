@@ -2,9 +2,15 @@
 //------------------------------------------------------------------------------
 // PointRam  --  the coordinate list the display scans out
 //
-// TWO BANKS of N_POINTS entries, each {x[7:0], y[7:0], blank, reserved} = 18
-// bits -- a natural BRAM width on Zynq (36Kb blocks configure as 2K x 18), so
-// the two spare bits are free.
+// TWO BANKS of N_POINTS entries, each {x[7:0], y[7:0], spare[1:0]} = 18 bits
+// -- a natural BRAM width on Zynq (36Kb blocks configure as 2K x 18), so the
+// two spare bits are free.
+//
+// The spare bits are written as zero and read by nobody. Blanking is DERIVED
+// in ScanoutEngine from segment parity, not stored here; these two are held
+// in reserve as a future EXPLICIT blank override, for artwork that is not
+// made of scanline point pairs. (They were called dwell bits until 2026-08-11,
+// when per-point dwell was cancelled -- Z blanking replaced it.)
 //
 // Address is {bank, index}. The RF side writes one bank while the scanout side
 // reads the other; on end-of-frame they swap. Single-buffered, roughly a third
@@ -27,21 +33,21 @@
 // banks are disjoint, so that case does not arise in normal operation.
 //------------------------------------------------------------------------------
 module PointRam #(
-    parameter int N_POINTS   = 1024,     // per bank
-    parameter int DWELL_BITS = 2
+    parameter int N_POINTS   = 1024,     // per ban
+    parameter int SPARE_BITS = 2
 )(
     input  logic clk,
 
     // ---- write port: the RF side ----
     input  logic                          we,
     input  logic [ADDR_W-1:0]             waddr,   // {bank, index}
-    input  logic [16+DWELL_BITS-1:0]      wdata,   // {x, y, blank, reserved}
+    input  logic [17:0]                   wdata,   // {x, y, spare[1:0]}
 
     // ---- read port: the scanout side ----
     input  logic [ADDR_W-1:0]             raddr,   // {bank, index}
-    output logic [16+DWELL_BITS-1:0]      rdata
+    output logic [17:0]                   rdata    // {x, y, spare[1:0]}
 );
-    localparam int W      = 16 + DWELL_BITS;
+    localparam int W      = 16 + SPARE_BITS;
     localparam int IDX_W  = $clog2(N_POINTS);
     localparam int ADDR_W = IDX_W + 1;            // +1 for the bank select
 

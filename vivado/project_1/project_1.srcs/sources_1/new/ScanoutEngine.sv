@@ -92,6 +92,33 @@
 // NOTE this assumes the scanline pairing. A closed polyline that is not made of
 // point pairs -- the old triangle, for instance -- will blank the wrong
 // segments. rdata[1:0] is reserved as a future explicit override.
+//
+// ---- the blank verdict lags by one point ----
+// z_blank describes where the BEAM is, and the beam is one DAC transaction
+// behind this state machine. Emitting a point at S_EMIT only starts a ~1.6 us
+// SPI write; the output does not move until Mcp4922Driver pulses LDAC and
+// raises `done`. So at S_SEG -- where the new segment's blank value is known --
+// the DAC is still parked on the PREVIOUS segment's last point.
+//
+// Driving z_blank there un-blanks a whole point period too early, and the beam
+// spends it standing in the middle of the gap it was supposed to cross dark:
+//
+//   gap 31 -> 64, blanked, n_steps = 4 after quartering
+//     L->R row   31.0  39.25  47.5  55.75      unblanks HERE, then jumps to 64
+//     R->L row   64.0  55.75  47.5  39.25      unblanks HERE, then jumps to 31
+//
+// One bright point per gap per row, at a fixed x, stacked over 128 rows -- so a
+// checkerboard grew two vertical lines inside every gap, at 1/4 and 3/4 across,
+// one from each serpentine direction. The mirror image was also true: z_blank
+// went HIGH a point early, cutting every span one SPACING short of its endpoint
+// and serrating the square edges.
+//
+// So the verdict is latched at S_SEG and applied at `done`, when LDAC has fired
+// and the beam is standing on the point the verdict belongs to. The transit
+// INTO a span's first point then still carries the connector's blank -- which is
+// right, it is geometrically the tail of the gap -- and the transit into a
+// connector's first point still carries the span's, so spans reach their
+// endpoints. Both artifacts are the same bug and go away together.
 //------------------------------------------------------------------------------
 module ScanoutEngine #(
     parameter int N_POINTS = 1024,       // PointRam depth PER BANK
@@ -117,7 +144,7 @@ module ScanoutEngine #(
 
     // ---- PointRam read port (1-cycle latency) ----
     output logic [IDX_W:0] raddr,        // {bank, index}
-    input  logic [17:0] rdata,           // {x[7:0], y[7:0], blank, reserved}
+    input  logic [17:0] rdata,           // {x[7:0], y[7:0], spare[1:0]}
 
     // ---- Mcp4922Driver ----
     output logic        start,           // 1-cycle pulse
@@ -133,7 +160,7 @@ module ScanoutEngine #(
     output logic        wrap,            // 1-cycle: just finished the last segment
     output logic [15:0] frame_count      // completed passes over the list
 );
-    localparam int IDX_W = $clog2(N_POINTS);
+    localparam int IDX_W = $clog2(N_POINTS); // 10
     // Coordinates are 8-bit but the DAC is 12-bit, so one coordinate unit is
     // 16 DAC counts.
     localparam int SPACING_DAC = SPACING * 16;
@@ -159,11 +186,13 @@ module ScanoutEngine #(
     logic signed [ACCW-1:0] dx, dy;          // delta, pre-scaled by 2^(FRAC-k)
     logic [7:0]  s_cnt;        // step within the current segment
     logic [3:0]  k;            // n_steps = 2^k, latched per segment
+    logic        blank_pend;   // blank verdict for the point still in the DAC
 
     // Guard the count: 0 would make the index arithmetic wrap oddly. A value
     // past the RAM depth cannot occur -- n_active is IDX_W wide -- but 0 can,
     // if a frame arrives empty.
     // n_active is IDX_W+1 wide so a full-buffer frame (1024) is representable.
+    // This is number of points on frame. when zero, it defaults to 1.
     wire [IDX_W:0] n_eff = (n_active == '0) ? {{IDX_W{1'b0}}, 1'b1} : n_active;
 
     // Next / next-next corner, wrapping. corner_idx has not advanced yet when
@@ -228,8 +257,9 @@ module ScanoutEngine #(
     wire [8:0] n_steps = 9'd1 << k_eff;    // for the segment being SET UP
     wire [8:0] n_steps_cur = 9'd1 << k;    // for the segment being DRAWN
 
-    // Blanking verdict for the segment about to be drawn. Latched at S_SEG,
-    // where both endpoints are valid, and held for the whole segment.
+    // Blanking verdict for the segment about to be drawn. Latched at S_SEG into
+    // blank_pend, where both endpoints are valid, and transferred to z_blank one
+    // point later -- see "the blank verdict lags by one point" above.
     always_ff @(posedge clk) begin
         if (rst) begin
             state       <= S_INIT;
@@ -244,6 +274,7 @@ module ScanoutEngine #(
             frame_count <= 16'd0;
             start       <= 1'b0;
             z_blank     <= 1'b1;             // beam off until we know better
+            blank_pend  <= 1'b1;
         end else if (restart) begin
             // Bank just swapped. Re-fetch both endpoints from the new bank
             // rather than continuing with a p0 read from the old one.
@@ -251,6 +282,7 @@ module ScanoutEngine #(
             start      <= 1'b0;
             wrap       <= 1'b0;
             z_blank    <= 1'b1;
+            blank_pend <= 1'b1;
         end else begin
             start <= 1'b0;                       // one-cycle-pulse defaults
             wrap  <= 1'b0;
@@ -260,6 +292,7 @@ module ScanoutEngine #(
                     raddr      <= {rd_bank, {IDX_W{1'b0}}};
                     corner_idx <= '0;
                     z_blank    <= 1'b1;
+                    blank_pend <= 1'b1;
                     state      <= S_P0A;
                 end
 
@@ -280,11 +313,14 @@ module ScanoutEngine #(
                 end
 
                 S_SEG: begin
-                    z_blank <= blank_w;
-                    k       <= k_eff;
+                    // NOT z_blank -- see "the blank verdict lags by one point"
+                    // above. The DAC is still holding the PREVIOUS segment's
+                    // last point at this moment.
+                    blank_pend <= blank_w;
+                    k          <= k_eff;
                     // acc starts exactly on P0. The increment is the delta
                     // pre-scaled by 2^(FRAC-k), so 2^k of them land on P1.
-                    acc_x <= {{(ACCW-12-FRAC){1'b0}}, p0x12, {FRAC{1'b0}}};
+                    acc_x <= {{(ACCW-12-FRAC){1'b0}}, p0x12, {FRAC{1'b0}}}; // {0, p0x12, 10'b0}
                     acc_y <= {{(ACCW-12-FRAC){1'b0}}, p0y12, {FRAC{1'b0}}};
                     dx    <= dx_w <<< (FRAC[3:0] - k_eff);
                     dy    <= dy_w <<< (FRAC[3:0] - k_eff);
@@ -298,6 +334,11 @@ module ScanoutEngine #(
                 end
 
                 S_WAIT: if (done) begin
+                    // `done` means LDAC has fired, so the beam is NOW standing
+                    // on the point that was emitted. Only here does this
+                    // segment's blank verdict describe where the beam actually
+                    // is; applying it any earlier blanks the wrong transit.
+                    z_blank <= blank_pend;
                     if (s_cnt == n_steps_cur - 9'd1) begin
                         // Segment finished. The old P1 becomes the new P0, so
                         // only one fresh corner has to be fetched.

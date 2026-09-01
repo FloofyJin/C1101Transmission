@@ -34,7 +34,7 @@ module tb_scanout;
     logic [7:0]  waddr;
     logic [17:0] wdata;
 
-    PointRam #(.N_POINTS(255), .DWELL_BITS(2)) ram (
+    PointRam #(.N_POINTS(255), .SPARE_BITS(2)) ram (
         .clk(clk), .we(we), .waddr(waddr), .wdata(wdata),
         .raddr(raddr), .rdata(rdata));
 
@@ -94,7 +94,7 @@ module tb_scanout;
     endfunction
 
     int i, sg, worst, d, a, b;
-    bit exp_blank;
+    bit exp_blank, prev_blank, ok;
 
     initial begin
         $display("");
@@ -168,26 +168,60 @@ module tb_scanout;
         // A checkerboard broke it: at a band boundary the columns shift 32
         // units and that "short" step becomes a bright streak across the
         // image. The span endpoints already trace the edge, so nothing is lost.
+        //
+        // cap_z[i] is sampled at the `start` pulse for point i, so it is the
+        // blanking in force while the beam TRAVELS from point i-1 to point i.
+        // That makes two DIFFERENT properties, and conflating them is what let
+        // the bug through:
+        //
+        //   interior transits of segment sg   ->  blank(sg)
+        //   the ENTRY transit into segment sg ->  blank(sg-1)
+        //
+        // The second one is the fix. Moving onto a span's first point is
+        // geometrically the last chunk of the GAP, so it has to stay dark. A
+        // z_blank that flipped with the segment index un-blanked it a full DAC
+        // point early and left the beam standing in the gap -- which stacked
+        // over 128 rows into two vertical lines down every gap of the
+        // checkerboard, at 1/4 and 3/4 across, one per serpentine direction.
         for (sg = 0; sg < 8; sg++) begin
             a = seg_start(sg);
-            b = seg_start((sg+1) % 8);
-            exp_blank = (sg % 2 == 1);
-            if (cap_z[a] !== exp_blank) begin
-                $display("  FAIL  segment %0d z_blank: got %0b, expected %0b",
-                         sg, cap_z[a], exp_blank);
+            b = a + 1;
+            while (b < n_cap && cap_s[b] == sg) b++;   // one past this segment
+
+            exp_blank  = (sg % 2 == 1);
+            prev_blank = (((sg + 7) % 8) % 2 == 1);
+
+            ok = 1;
+            for (i = a + 1; i < b; i++)
+                if (cap_z[i] !== exp_blank) ok = 0;
+            if (!ok) begin
+                $display("  FAIL  segment %0d interior z_blank: expected %0b",
+                         sg, exp_blank);
                 errors++;
             end else
                 $display("  ok    segment %0d %s", sg, exp_blank ? "BLANKED" : "drawn");
+
+            if (cap_z[a] !== prev_blank) begin
+                $display("  FAIL  segment %0d entry transit: got %0b, expected %0b (segment %0d's)",
+                         sg, cap_z[a], prev_blank, (sg+7) % 8);
+                errors++;
+            end
         end
 
-        if (cap_z[seg_start(1)] !== 1'b1) begin
+        // The same three assertions in plain language, on interior transits.
+        if (cap_z[seg_start(1)+1] !== 1'b1) begin
             $display("  FAIL  the gap between the two spans is NOT blanked"); errors++;
         end
-        if (cap_z[seg_start(3)] !== 1'b1) begin
+        if (cap_z[seg_start(3)+1] !== 1'b1) begin
             $display("  FAIL  the serpentine row step is NOT blanked"); errors++;
         end
-        if (cap_z[seg_start(0)] !== 1'b0) begin
+        if (cap_z[seg_start(0)+1] !== 1'b0) begin
             $display("  FAIL  a SPAN was blanked -- nothing would be drawn"); errors++;
+        end
+        // And the regression itself: the beam must still be dark when it
+        // arrives at a span's first point.
+        if (cap_z[seg_start(2)] !== 1'b1) begin
+            $display("  FAIL  the transit ONTO span 2 was drawn -- this is the gap streak"); errors++;
         end
 
         $display("");
