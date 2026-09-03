@@ -48,20 +48,40 @@
  *             /    \
  *            /______\        base 2*HALF_BASE wide, at Y_BOT
  *
- * TRI_ROWS sets the row pitch: (Y_TOP - Y_BOT) / (TRI_ROWS - 1). Keep it near
- * the FPGA's SPACING (4 coordinate units) -- the design rule is
+ * TRI_ROWS sets the row pitch: TRI_H / (TRI_ROWS - 1). Keep it near the FPGA's
+ * SPACING (4 coordinate units) -- the design rule is
  * SPACING ~= row pitch ~= beam spot, and a finer pitch than SPACING just
  * spends DAC time without making the fill look any more solid.
  *
- *   64 rows over 224 units -> 3.6 units/row, 128 points, 5 packets/frame
+ *   64 rows over 173 units -> 2.7 units/row, 128 points, 5 packets/frame
+ *
+ * ---- rotation ------------------------------------------------------------
+ *
+ * The shape is built ONCE about its own centroid and rotated into place each
+ * frame. Rotating the span endpoints is legitimate here because blanking is
+ * derived from segment PARITY, not from y being constant: a rotated span is
+ * still segment 2i (even -> drawn) and its connector still 2i+1 (odd ->
+ * blanked). The fill lines rotate with the shape, which is how a rotating
+ * solid should look, and rigid rotation preserves path length so the DAC
+ * budget does not change with angle.
+ *
+ * The size is set by the ROTATION CIRCLE, not by the screen. Every point must
+ * stay inside 0..255 at EVERY angle or the coordinate wraps and draws a line
+ * across the image. With the centroid at (128,128) the budget is a radius of
+ * 128; B=100/H=173 puts the base corners at 115.4 and the apex at 115.3 --
+ * near-equal, which is the best aspect ratio for filling a circle. Swept over
+ * all angles the extremes are 12.4 and 243.6.
  */
 #define TRI_ROWS       64            /* spans; 2 points each                  */
-#define TRI_Y_BOT      16
-#define TRI_Y_TOP      240
-#define TRI_CX         128
-#define TRI_HALF_BASE  100
+#define TRI_B          100           /* half base width, from the centroid    */
+#define TRI_H          173           /* apex-to-base height                   */
 
 #define TRI_POINTS     (2 * TRI_ROWS)   /* must be EVEN and <= CC_FRAME_POINTS */
+
+#define ROT_STEPS      64            /* angles per revolution; power of two   */
+#define ROT_CX         128           /* rotation centre                       */
+#define ROT_CY         128
+#define ROT_ADVANCE    1             /* angle steps per frame; negative = CW  */
 
 /* USER CODE END PD */
 
@@ -77,8 +97,11 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
-/* Built once at startup. Static geometry, so there is nothing to recompute
-   per frame -- the loop just re-sends it. */
+/* The shape about its own centroid, built once. Signed, and NOT clamped to
+   8 bits -- these are offsets, not coordinates. */
+static int16_t base_x[TRI_POINTS], base_y[TRI_POINTS];
+
+/* One frame's worth of screen coordinates, rewritten each rotation step. */
 static cc1101_point_t tri[TRI_POINTS];
 
 /* USER CODE END PV */
@@ -121,15 +144,65 @@ static void build_triangle(void)
     const int span = TRI_ROWS - 1;    /* so row `span` lands exactly on the apex */
 
     for (int i = 0; i < TRI_ROWS; i++) {
-        int y    = TRI_Y_BOT + (i * (TRI_Y_TOP - TRI_Y_BOT)) / span;
-        int half = (TRI_HALF_BASE * (span - i)) / span;   /* full at base, 0 at apex */
-        int xl   = TRI_CX - half;
-        int xr   = TRI_CX + half;
+        /* Centroid-relative: the base sits at -H/3 and the apex at +2H/3, which
+           is what puts the rotation centre at the centroid rather than at the
+           base. Rotating about anything else makes the triangle wobble. */
+        int y    = -(TRI_H / 3) + (i * TRI_H) / span;
+        int half = (TRI_B * (span - i)) / span;      /* full at base, 0 at apex */
+        int xl   = -half;
+        int xr   =  half;
 
         if (i & 1) { int t = xl; xl = xr; xr = t; }   /* odd rows run right-to-left */
 
-        tri[2*i    ].x = (uint8_t)xl;  tri[2*i    ].y = (uint8_t)y;
-        tri[2*i + 1].x = (uint8_t)xr;  tri[2*i + 1].y = (uint8_t)y;
+        base_x[2*i    ] = (int16_t)xl;  base_y[2*i    ] = (int16_t)y;
+        base_x[2*i + 1] = (int16_t)xr;  base_y[2*i + 1] = (int16_t)y;
+    }
+}
+
+/*
+ * Q15 sine, one revolution in ROT_STEPS steps. A table rather than sinf() so
+ * this pulls in no libm and the arithmetic is exactly reproducible.
+ * cos(i) = sin(i + ROT_STEPS/4).
+ */
+static const int16_t sin_q15[ROT_STEPS] = {
+         0,   3212,   6393,   9512,  12539,  15446,  18204,  20787,
+     23170,  25329,  27245,  28898,  30273,  31356,  32137,  32609,
+     32767,  32609,  32137,  31356,  30273,  28898,  27245,  25329,
+     23170,  20787,  18204,  15446,  12539,   9512,   6393,   3212,
+         0,  -3212,  -6393,  -9512, -12539, -15446, -18204, -20787,
+    -23170, -25329, -27245, -28898, -30273, -31356, -32137, -32609,
+    -32767, -32609, -32137, -31356, -30273, -28898, -27245, -25329,
+    -23170, -20787, -18204, -15446, -12539,  -9512,  -6393,  -3212,
+};
+
+/*
+ * Rotate the base shape by `angle` steps and drop it on the screen centre.
+ *
+ * Point ORDER is untouched, which is the whole reason this is safe: the
+ * span/connector parity that drives Z blanking survives rotation unchanged.
+ *
+ * Products peak at 116 * 32767, well inside int32. The clamp should never
+ * fire -- the geometry is sized to the rotation circle -- but a coordinate
+ * that wrapped past 255 would draw a bright line clean across the image, so
+ * it is cheap insurance against a future resize that forgets the constraint.
+ */
+static void rotate_into(cc1101_point_t *out, uint8_t angle)
+{
+    const int32_t c = sin_q15[(angle + ROT_STEPS/4) & (ROT_STEPS - 1)];
+    const int32_t s = sin_q15[ angle                & (ROT_STEPS - 1)];
+
+    for (int i = 0; i < TRI_POINTS; i++) {
+        int32_t bx = base_x[i], by = base_y[i];
+        int32_t x = ((bx * c - by * s) >> 15) + ROT_CX;
+        int32_t y = ((bx * s + by * c) >> 15) + ROT_CY;
+
+        if (x <   0) x =   0;
+        if (x > 255) x = 255;
+        if (y <   0) y =   0;
+        if (y > 255) y = 255;
+
+        out[i].x = (uint8_t)x;
+        out[i].y = (uint8_t)y;
     }
 }
 /* USER CODE END 0 */
@@ -196,9 +269,9 @@ int main(void)
              partnum);
 
   build_triangle();
-  printf("triangle: %d rows, %d points, %d packets/frame\r\n",
+  printf("triangle: %d rows, %d points, %d packets/frame, %d angles/rev\r\n",
          TRI_ROWS, TRI_POINTS,
-         (TRI_POINTS + CC_MAX_POINTS - 1) / CC_MAX_POINTS);
+         (TRI_POINTS + CC_MAX_POINTS - 1) / CC_MAX_POINTS, ROT_STEPS);
 
   /* USER CODE END 2 */
 
@@ -229,13 +302,19 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     bool ok;
-    /* A whole frame per pass. send_frame splits TRI_POINTS into ceil(n/28)
-       packets and marks the LAST one end-of-frame, which is what makes the
-       receiver swap banks and publish n_active.
+    /* One rotation step per frame. send_frame splits TRI_POINTS into
+       ceil(n/28) packets and marks the LAST one end-of-frame, which is what
+       makes the receiver swap banks -- so the display only ever shows a
+       complete angle, never half of one and half of the next.
 
-       Re-sending a static image every pass is not wasted work: it is the
-       self-healing property. A dropped packet leaves a few stale coordinates
-       in the write bank, and the next pass overwrites them. */
+       A dropped packet now costs a few spans that are one FRAME stale rather
+       than permanently wrong: the next pass rewrites every index. That is the
+       self-healing property doing real work once the image moves. */
+    static uint8_t angle = 0;
+
+    rotate_into(tri, angle);
+    angle = (uint8_t)((angle + ROT_ADVANCE) & (ROT_STEPS - 1));
+
     ok = cc1101_send_frame(tri, TRI_POINTS);
 
     if (ok) sent++; else failed++;
@@ -257,10 +336,19 @@ int main(void)
                d->sync_seen, d->sent_ok, d->drained, d->timed_out);
     }
 
-    /* Between FRAMES, not between packets -- send_frame already sent all five
-       back to back. The image is static, so this only sets how often it is
-       repaired; the display refreshes at its own rate regardless. */
-    HAL_Delay(200);
+    /*
+     * Between FRAMES, not between packets -- send_frame already sent all five
+     * back to back. This is now the ANIMATION rate, so it is no longer free:
+     * every millisecond here is a millisecond of rotation.
+     *
+     * At the config table's 38.4 kbps a 59-byte packet is ~14 ms of airtime,
+     * so a frame is already ~75 ms and a revolution takes ROT_STEPS * (75 +
+     * this). At 0 that is ~5 s per turn. Raise it to slow the spin down;
+     * the DISPLAY refresh is unaffected either way -- the FPGA redraws
+     * PointRam continuously no matter how often the contents change, which is
+     * the entire point of decoupling the two rates.
+     */
+    HAL_Delay(0);
   }
   /* USER CODE END 3 */
 }
