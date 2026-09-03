@@ -10,7 +10,7 @@
 ../Core/Src/cc1101.c:172:6:cc1101_init	4
 ../Core/Src/cc1101.c:208:6:cc1101_selftest	3
 ../Core/Src/cc1101.c:214:25:cc1101_last_diag	1
-../Core/Src/cc1101.c:223:13:tx_raw	9
-../Core/Src/cc1101.c:289:6:cc1101_send_test_packet	1
-../Core/Src/cc1101.c:302:6:cc1101_send_points	6
-../Core/Src/cc1101.c:322:6:cc1101_send_frame	6
+../Core/Src/cc1101.c:228:13:wait_idle	3
+../Core/Src/cc1101.c:241:13:tx_raw	9
+../Core/Src/cc1101.c:308:6:cc1101_send_points	8
+../Core/Src/cc1101.c:335:6:cc1101_send_frame	8

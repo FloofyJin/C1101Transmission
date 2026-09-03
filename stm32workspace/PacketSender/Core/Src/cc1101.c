@@ -217,6 +217,24 @@ const cc1101_tx_diag_t *cc1101_last_diag(void)
 }
 
 /*
+ * Wait for the chip's state machine to actually reach IDLE.
+ *
+ * SFTX is only accepted in IDLE or TXFIFO_UNDERFLOW, and strobing SIDLE does
+ * not mean the chip is there yet -- it is still winding down TX. Flush too
+ * early and it is silently ignored, so the next payload lands on top of
+ * whatever the last packet left behind. Only reachable now that send_frame
+ * transmits its packets back to back; one packet every 200 ms never hit it.
+ */
+static bool wait_idle(uint32_t ms)
+{
+    uint32_t t0 = HAL_GetTick();
+    for (;;) {
+        if ((cc1101_read_status(MARCSTATE_ADDR) & 0x1F) == MARC_IDLE) return true;
+        if (HAL_GetTick() - t0 > ms) return false;
+    }
+}
+
+/*
  * The transmit mission. Blocking: returns once the packet is on the air or the
  * GDO2 wait gave up.
  */
@@ -227,6 +245,7 @@ static bool tx_raw(const uint8_t *payload, uint8_t len)
     memset(&diag, 0, sizeof(diag));
 
     cc_strobe(SIDLE);
+    wait_idle(10);              /* SFTX is a no-op unless we are IDLE */
     cc_strobe(SFTX);            /* a leftover byte corrupts this packet */
 
     cc_write_fifo(payload, len);
@@ -284,19 +303,6 @@ static bool tx_raw(const uint8_t *payload, uint8_t len)
 
     cc_strobe(SIDLE);
     return true;
-}
-
-bool cc1101_send_test_packet(void)
-{
-    uint8_t payload[3] = { 0xAA, 0x55, seq };
-
-    /*
-     * Increment per ATTEMPT, not per success -- matching TxSeq.sv. A packet
-     * lost on air must still consume a sequence number, or the receiver cannot
-     * see the gap.
-     */
-    seq++;
-    return tx_raw(payload, sizeof(payload));
 }
 
 bool cc1101_send_points(uint16_t start_index, const cc1101_point_t *pts,

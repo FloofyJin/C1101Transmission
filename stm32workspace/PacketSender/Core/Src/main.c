@@ -188,6 +188,13 @@ int main(void)
   if (version == 0x00)
       printf("  !! VERSION=0 -- chip not responding. Check wiring/CSn/power.\r\n");
 
+  /* PARTNUM is 0x00 and VERSION is not, so equal values mean the reads are not
+     returning register data at all -- a broken MISO reads as plausible-looking
+     garbage in every register otherwise. */
+  if (partnum == version)
+      printf("  !! PARTNUM==VERSION==0x%02X -- read path broken, not the radio.\r\n",
+             partnum);
+
   build_triangle();
   printf("triangle: %d rows, %d points, %d packets/frame\r\n",
          TRI_ROWS, TRI_POINTS,
@@ -213,7 +220,6 @@ int main(void)
    * parse point packets until the M14 RTL work lands -- expect silence, not a
    * wrong answer.
    */
-  #define SEND_POINTS 1
 
   uint32_t sent = 0, failed = 0;
 
@@ -223,20 +229,14 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     bool ok;
-
-  #if SEND_POINTS
     /* A whole frame per pass. send_frame splits TRI_POINTS into ceil(n/28)
-       packets, indexes them from 0, and marks the LAST one end-of-frame --
-       which is what makes the receiver swap banks and publish n_active.
-       Without that flag the display never swaps and nothing appears.
+       packets and marks the LAST one end-of-frame, which is what makes the
+       receiver swap banks and publish n_active.
 
        Re-sending a static image every pass is not wasted work: it is the
        self-healing property. A dropped packet leaves a few stale coordinates
        in the write bank, and the next pass overwrites them. */
     ok = cc1101_send_frame(tri, TRI_POINTS);
-  #else
-    ok = cc1101_send_test_packet();
-  #endif
 
     if (ok) sent++; else failed++;
 
@@ -249,8 +249,8 @@ int main(void)
     if (HAL_GetTick() - t_report >= 1000) {
         t_report = HAL_GetTick();
         const cc1101_tx_diag_t *d = cc1101_last_diag();
-        /* frames, not packets -- send_frame is 5 transmits per pass here. The
-           diag struct describes only the LAST packet of the last frame. */
+        /* frames, not packets -- each pass is 5 transmits here, and the diag
+           describes only the last of them. */
         printf("frames=%lu failed=%lu | txbytes=0x%02X marc=0x%02X "
                "sync=%d done=%d drained=%d timeout=%d\r\n",
                sent, failed, d->txbytes, d->marcstate,

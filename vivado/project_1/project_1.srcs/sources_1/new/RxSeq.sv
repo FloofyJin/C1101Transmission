@@ -312,7 +312,7 @@ module RxSeq #(
                     end else tmr <= tmr + 32'd1;
                 end
 
-                // ---- RXBYTES, twice, until two consecutive reads agree ----
+                // ---- RXBYTES, twice, until two consecutive reads agree. This reads the size of the data received ----
                 R_RXB_I: begin
                     cmd_valid <= 1'b1; cmd <= CMD_READ_REG; cmd_addr <= RXBYTES_ADDR;
                     rstate <= R_RXB_W;
@@ -327,7 +327,7 @@ module RxSeq #(
                     rstate <= R_RXB2_W;
                 end
                 R_RXB2_W: if (drv_done) begin
-                    if (rd_data == rxb_prev) begin
+                    if (rd_data == rxb_prev) begin // Both reads are the same. GOOD
                         rxbytes <= rd_data;
                         if (rd_data[7]) begin
                             // RXFIFO_OVERFLOW -- the FIFO is unusable, just flush
@@ -345,6 +345,7 @@ module RxSeq #(
                         end
                     end else begin
                         // disagreed -- keep the newer sample and compare again
+                        // TODO: Could add a counter to return back to IDLE if it keeps mismatching
                         rxb_prev <= rd_data;
                         rstate   <= R_RXB2_I;
                     end

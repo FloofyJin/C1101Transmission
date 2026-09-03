@@ -197,6 +197,7 @@ typedef struct {
 typedef struct {
     uint8_t txbytes;    /* TXBYTES after the FIFO write. Expect 1 + payload_len.
                            0x00     -> the burst write never landed
+                           > 1+len  -> the FIFO was not empty before the write
                            bit 7    -> TX FIFO underflow                      */
     uint8_t marcstate;  /* MARCSTATE after STX. Expect 0x13 (TX).
                            0x01     -> STX did not take, chip never left IDLE
