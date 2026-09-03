@@ -64,3 +64,6 @@ timestamp=[2026-08-04 22:34:17], mode=BUILD, duration=0:00:04.667, duration_ms=4
 timestamp=[2026-08-04 22:34:29], mode=BUILD, duration=0:00:06.555, duration_ms=6555, data={name=RFsender_fsbl_system, configuration=Debug, clean_build=false}
 timestamp=[2026-08-04 22:34:34], mode=BUILD, duration=0:00:01.756, duration_ms=1756, data={name=RFsender_application, configuration=Debug, clean_build=false}
 timestamp=[2026-08-04 22:34:46], mode=BUILD, duration=0:00:06.508, duration_ms=6508, data={name=RFsender_application_system, configuration=Debug, clean_build=false}
+timestamp=[2026-09-02 18:19:19], mode=PLATFORM_REPOSITORY_INIT, duration=0:00:00.492, duration_ms=492, data={}
+timestamp=[2026-09-02 18:19:20], mode=WORKBENCH_START, duration=0:00:08.473, duration_ms=8473, data={}
+timestamp=[2026-09-02 18:19:20], mode=WORKBENCH_UI_INIT, duration=0:00:00.453, duration_ms=453, data={editors_count=6, platform_editors_count=2, projects_count=6, platform_projects_count=1, active_platform_editor=false, projects=RFsender_application,RFsender_application_system,RFsender_fsbl,RFsender_fsbl_system,RFsender_platform,RemoteSystemsTempFiles}

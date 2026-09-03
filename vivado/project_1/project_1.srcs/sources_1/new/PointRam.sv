@@ -97,7 +97,7 @@ module PointRam #(
     integer i, row, band, col, c, base, bk;
     reg [7:0] yv, xl, xr;
     initial begin
-        for (i = 0; i < 2*N_POINTS; i = i + 1) mem[i] = '0;
+        for (i = 0; i < 2*N_POINTS; i = i + 1) mem[i] = '0; // reset board
         for (bk = 0; bk < 2; bk = bk + 1)
             for (row = 0; row < CK_ROWS; row = row + 1) begin
                 yv   = CK_DY[7:0] / 8'd2 + row[7:0] * CK_DY[7:0];

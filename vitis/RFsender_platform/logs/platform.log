@@ -10088,3 +10088,184 @@ TRACE::2026-08-04.22:33:40::SCWMssOS::DEBUG:  swdes dump  D:/Work/projects/zybo_
 D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss|system||
 
 TRACE::2026-08-04.22:33:40::SCWMssOS::Sw design exists and opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:19::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:19::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:19::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:20::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:20::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:20::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:20::SCWPlatform::Do not have an existing db opened. 
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened new HwDB with name topSystem
+TRACE::2026-09-02.18:20:22::SCWReader::Active system found as  RFsender_platform
+TRACE::2026-09-02.18:20:22::SCWReader::Handling sysconfig RFsender_platform
+TRACE::2026-09-02.18:20:22::SCWDomain::checking for install qemu data   : 
+TRACE::2026-09-02.18:20:22::SCWDomain:: Using the QEMU Data from install at  : D:/Applications/Xilinx/Vitis/2024.2/data/emulation/platforms/zynq/sw/a9_standalone/qemu/
+TRACE::2026-09-02.18:20:22::SCWDomain:: Using the QEMU args  from install at  : D:/Applications/Xilinx/Vitis/2024.2/data/emulation/platforms/zynq/sw/a9_standalone/qemu/qemu_args.txt
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWReader::Boot application domain added for zynq_fsbl
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWMssOS::Checking the sw design at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::DEBUG:  swdes dump  
+TRACE::2026-09-02.18:20:22::SCWMssOS::No sw design opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::mss exists loading the mss file  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::Opened the sw design from mss  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::Adding the swdes entry D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss with des name system
+TRACE::2026-09-02.18:20:22::SCWMssOS::updating the scw layer about changes
+TRACE::2026-09-02.18:20:22::SCWMssOS::Opened the sw design.  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWMssOS::Checking the sw design at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::DEBUG:  swdes dump  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss|system||
+
+TRACE::2026-09-02.18:20:22::SCWMssOS::Sw design exists and opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS:: library already available in sw design:  xilffs:5.3
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWMssOS::Checking the sw design at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::DEBUG:  swdes dump  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss|system||
+
+TRACE::2026-09-02.18:20:22::SCWMssOS::Sw design exists and opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS:: library already available in sw design:  xilrsa:1.8
+TRACE::2026-09-02.18:20:22::SCWMssOS::Saving the mss changes D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::Found a swdesign opened with the mssfile.
+TRACE::2026-09-02.18:20:22::SCWMssOS::Completed writemss as part of save.
+TRACE::2026-09-02.18:20:22::SCWMssOS::Commit changes completed.
+TRACE::2026-09-02.18:20:22::SCWReader::Adding prebuilt librarypaths as   
+TRACE::2026-09-02.18:20:22::SCWReader::Adding prebuilt incpaths  as   
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWMssOS::Checking the sw design at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::DEBUG:  swdes dump  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss|system||
+
+TRACE::2026-09-02.18:20:22::SCWMssOS::Sw design exists and opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWReader::No isolation master present  
+TRACE::2026-09-02.18:20:22::SCWDomain::checking for install qemu data   : 
+TRACE::2026-09-02.18:20:22::SCWDomain:: Using the QEMU Data from install at  : D:/Applications/Xilinx/Vitis/2024.2/data/emulation/platforms/zynq/sw/a9_standalone/qemu/
+TRACE::2026-09-02.18:20:22::SCWDomain:: Using the QEMU args  from install at  : D:/Applications/Xilinx/Vitis/2024.2/data/emulation/platforms/zynq/sw/a9_standalone/qemu/qemu_args.txt
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWMssOS::Checking the sw design at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::DEBUG:  swdes dump  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss|system||
+
+TRACE::2026-09-02.18:20:22::SCWMssOS::No sw design opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::mss exists loading the mss file  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::Opened the sw design from mss  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::Adding the swdes entry D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss with des name system_0
+TRACE::2026-09-02.18:20:22::SCWMssOS::updating the scw layer about changes
+TRACE::2026-09-02.18:20:22::SCWMssOS::Opened the sw design.  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWMssOS::Checking the sw design at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::DEBUG:  swdes dump  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss|system_0||
+D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss|system||
+
+TRACE::2026-09-02.18:20:22::SCWMssOS::Sw design exists and opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS:: library already available in sw design:  xilffs:5.3
+TRACE::2026-09-02.18:20:22::SCWMssOS::Saving the mss changes D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::Found a swdesign opened with the mssfile.
+TRACE::2026-09-02.18:20:22::SCWMssOS::Completed writemss as part of save.
+TRACE::2026-09-02.18:20:22::SCWMssOS::Commit changes completed.
+TRACE::2026-09-02.18:20:22::SCWReader::Adding prebuilt librarypaths as   
+TRACE::2026-09-02.18:20:22::SCWReader::Adding prebuilt incpaths  as   
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to open the hw design at D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA given D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA absoulate path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform::DSA directory D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Platform Path D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/hw/fullsender.xsa
+TRACE::2026-09-02.18:20:22::SCWPlatform:: Unique name xilinx:zybo-z7-10::0.0
+TRACE::2026-09-02.18:20:22::SCWPlatform::Trying to set the existing hwdb with name topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Opened existing hwdb topSystem
+TRACE::2026-09-02.18:20:22::SCWPlatform::Found the Hw Db part of the input DSA
+TRACE::2026-09-02.18:20:22::SCWMssOS::Checking the sw design at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWMssOS::DEBUG:  swdes dump  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss|system_0||
+D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/zynq_fsbl/zynq_fsbl_bsp/system.mss|system||
+
+TRACE::2026-09-02.18:20:22::SCWMssOS::Sw design exists and opened at  D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_platform/ps7_cortexa9_0/standalone_domain/bsp/system.mss
+TRACE::2026-09-02.18:20:22::SCWReader::No isolation master present  

@@ -210,3 +210,12 @@ Reason: Failed to execute command 'platform config -updatehw {D:/Work/projects/z
 22:35:12 INFO  : Invoking Bootgen: bootgen -image RFsender_fsbl_system.bif -arch zynq -o D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/BOOT.bin -w on
 22:35:12 INFO  : Overwriting existing bif file D:/Work/projects/zybo_z7_projects/DD_RF/vitis/RFsender_fsbl_system/_ide/bootimage/RFsender_fsbl_system.bif
 22:35:14 INFO  : Bootgen command execution is done.
+18:19:15 DEBUG : Logs will be stored at 'D:/Work/projects/zybo_z7_projects/DD_RF/vitis/IDE.log'.
+18:19:16 INFO  : Launching XSCT server: xsct.bat -n  -interactive D:\Work\projects\zybo_z7_projects\DD_RF\vitis\temp_xsdb_launch_script.tcl
+18:19:19 INFO  : Platform repository initialization has completed.
+18:19:20 INFO  : Registering command handlers for Vitis TCF services
+18:19:22 INFO  : XSCT server has started successfully.
+18:19:32 INFO  : plnx-install-location is set to ''
+18:19:32 INFO  : Successfully done setting XSCT server connection channel  
+18:19:32 INFO  : Successfully done query RDI_DATADIR 
+18:19:32 INFO  : Successfully done setting workspace for the tool. 

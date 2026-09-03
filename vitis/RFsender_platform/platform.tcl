@@ -45,3 +45,4 @@ platform clean
 platform generate
 platform config -updatehw {D:/Work/projects/zybo_z7_projects/DD_RF/vivado/project_1/fullsender.xsa}
 platform generate -domains 
+platform active {RFsender_platform}

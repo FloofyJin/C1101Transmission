@@ -33,6 +33,36 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+/*
+ * ---- filled triangle, as scanline spans ----------------------------------
+ *
+ * NOT a 3-point outline. ScanoutEngine derives blanking from segment PARITY --
+ * even segments are spans, odd are connectors -- so a 3-corner polygon gets
+ * two of its three sides blanked. That is why the seeded triangle outline was
+ * retired on the FPGA side. The pipeline draws scanline fill, so the triangle
+ * has to arrive as fill: one span per row, two points each.
+ *
+ *          apex (CX, Y_TOP)
+ *               /\
+ *              /  \          row i:   xL(i) ......... xR(i)   all at y(i)
+ *             /    \
+ *            /______\        base 2*HALF_BASE wide, at Y_BOT
+ *
+ * TRI_ROWS sets the row pitch: (Y_TOP - Y_BOT) / (TRI_ROWS - 1). Keep it near
+ * the FPGA's SPACING (4 coordinate units) -- the design rule is
+ * SPACING ~= row pitch ~= beam spot, and a finer pitch than SPACING just
+ * spends DAC time without making the fill look any more solid.
+ *
+ *   64 rows over 224 units -> 3.6 units/row, 128 points, 5 packets/frame
+ */
+#define TRI_ROWS       64            /* spans; 2 points each                  */
+#define TRI_Y_BOT      16
+#define TRI_Y_TOP      240
+#define TRI_CX         128
+#define TRI_HALF_BASE  100
+
+#define TRI_POINTS     (2 * TRI_ROWS)   /* must be EVEN and <= CC_FRAME_POINTS */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,6 +76,10 @@ SPI_HandleTypeDef hspi1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+
+/* Built once at startup. Static geometry, so there is nothing to recompute
+   per frame -- the loop just re-sends it. */
+static cc1101_point_t tri[TRI_POINTS];
 
 /* USER CODE END PV */
 
@@ -63,6 +97,40 @@ static void MX_USART2_UART_Init(void);
 int __io_putchar(int ch) {            /* retarget printf to the ST-Link VCP */
     HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
     return ch;
+}
+
+/*
+ * Fill `tri` with one span per row, bottom to top.
+ *
+ * Rows alternate direction (SERPENTINE) so the row-to-row connector is a short
+ * hop along the shape's edge instead of a jump back across the figure. Every
+ * connector is blanked either way, but a short one costs far less DAC time --
+ * the beam still has to physically travel it.
+ *
+ * Point ORDER carries the blanking, so it is not cosmetic:
+ *
+ *   points 2i, 2i+1   -> segment 2i   EVEN -> span      -> drawn
+ *   points 2i+1, 2i+2 -> segment 2i+1 ODD  -> connector -> blanked
+ *
+ * TRI_POINTS is even, so the wrap segment (last point back to point 0) is odd
+ * and gets blanked too. That matters: the wrap runs from the apex all the way
+ * down to the bottom-left corner.
+ */
+static void build_triangle(void)
+{
+    const int span = TRI_ROWS - 1;    /* so row `span` lands exactly on the apex */
+
+    for (int i = 0; i < TRI_ROWS; i++) {
+        int y    = TRI_Y_BOT + (i * (TRI_Y_TOP - TRI_Y_BOT)) / span;
+        int half = (TRI_HALF_BASE * (span - i)) / span;   /* full at base, 0 at apex */
+        int xl   = TRI_CX - half;
+        int xr   = TRI_CX + half;
+
+        if (i & 1) { int t = xl; xl = xr; xr = t; }   /* odd rows run right-to-left */
+
+        tri[2*i    ].x = (uint8_t)xl;  tri[2*i    ].y = (uint8_t)y;
+        tri[2*i + 1].x = (uint8_t)xr;  tri[2*i + 1].y = (uint8_t)y;
+    }
 }
 /* USER CODE END 0 */
 
@@ -120,6 +188,11 @@ int main(void)
   if (version == 0x00)
       printf("  !! VERSION=0 -- chip not responding. Check wiring/CSn/power.\r\n");
 
+  build_triangle();
+  printf("triangle: %d rows, %d points, %d packets/frame\r\n",
+         TRI_ROWS, TRI_POINTS,
+         (TRI_POINTS + CC_MAX_POINTS - 1) / CC_MAX_POINTS);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -152,16 +225,15 @@ int main(void)
     bool ok;
 
   #if SEND_POINTS
-    /* One point walking a diagonal, so a static receiver readout still shows
-       motion. Index 0 keeps it inside PointRam regardless of frame size. */
-//    static uint8_t t = 1;
-//    cc1101_point_t p = { .x = t, .y = (uint8_t)(255 - t) };
-    cc1101_point_t pts[30];
-    for(int i =0; i <30; i++){
-    	pts[i].x = i+1; pts[i].y = 100+i; }
-    }
-    ok = cc1101_send_points(0, pts, 1);
-//    t++;
+    /* A whole frame per pass. send_frame splits TRI_POINTS into ceil(n/28)
+       packets, indexes them from 0, and marks the LAST one end-of-frame --
+       which is what makes the receiver swap banks and publish n_active.
+       Without that flag the display never swaps and nothing appears.
+
+       Re-sending a static image every pass is not wasted work: it is the
+       self-healing property. A dropped packet leaves a few stale coordinates
+       in the write bank, and the next pass overwrites them. */
+    ok = cc1101_send_frame(tri, TRI_POINTS);
   #else
     ok = cc1101_send_test_packet();
   #endif
@@ -177,13 +249,18 @@ int main(void)
     if (HAL_GetTick() - t_report >= 1000) {
         t_report = HAL_GetTick();
         const cc1101_tx_diag_t *d = cc1101_last_diag();
-        printf("sent=%lu failed=%lu | txbytes=0x%02X marc=0x%02X "
+        /* frames, not packets -- send_frame is 5 transmits per pass here. The
+           diag struct describes only the LAST packet of the last frame. */
+        printf("frames=%lu failed=%lu | txbytes=0x%02X marc=0x%02X "
                "sync=%d done=%d drained=%d timeout=%d\r\n",
                sent, failed, d->txbytes, d->marcstate,
                d->sync_seen, d->sent_ok, d->drained, d->timed_out);
     }
 
-    HAL_Delay(200);   /* matches TxSeq's REPEAT_MS; raise the rate later */
+    /* Between FRAMES, not between packets -- send_frame already sent all five
+       back to back. The image is static, so this only sets how often it is
+       repaired; the display refreshes at its own rate regardless. */
+    HAL_Delay(200);
   }
   /* USER CODE END 3 */
 }

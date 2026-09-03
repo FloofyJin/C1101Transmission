@@ -25,8 +25,8 @@ module Mcp4922Driver #(
     output logic dac_sdi
 );
 
-localparam logic [3:0] CFG_A = 4'b0011; // 0x3
-localparam logic [3:0] CFG_B = 4'b1011; // 0xB
+localparam logic [3:0] CFG_A = 4'b0011; // 0x3: MSB=0 is VoutA
+localparam logic [3:0] CFG_B = 4'b1011; // 0xB: MSB=1 is VoutB
 
 // You want to double your desired speed bc we toggle between rise and fall of sclk
 localparam int CLK_DIV = SYSTEM_CLK_SPEED / (2 * DESIRED_SPEED); 
