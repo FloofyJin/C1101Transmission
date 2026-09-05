@@ -1,0 +1,19 @@
+frames            200  @ 20.0 fps  (10.0s)
+segments/frame    min 4  mean 77.2  max 90
+budget            90 segments = 180 points
+origin            bottom-left
+over budget       0 frames (0.0%) - detail truncated
+json size         291457 bytes
+travel saved      37285 units total by reordering
+
+heaviest frames:
+     32  segs=  90  pts= 180  contours=  4  dropped=0  clamped=False
+     35  segs=  90  pts= 180  contours=  1  dropped=0  clamped=False
+     36  segs=  90  pts= 180  contours=  1  dropped=0  clamped=False
+     37  segs=  90  pts= 180  contours=  2  dropped=0  clamped=False
+     40  segs=  90  pts= 180  contours=  3  dropped=0  clamped=False
+     41  segs=  90  pts= 180  contours=  3  dropped=0  clamped=False
+     42  segs=  90  pts= 180  contours=  5  dropped=0  clamped=False
+     43  segs=  90  pts= 180  contours=  4  dropped=0  clamped=False
+     44  segs=  90  pts= 180  contours=  3  dropped=0  clamped=False
+     45  segs=  90  pts= 180  contours=  3  dropped=0  clamped=False
