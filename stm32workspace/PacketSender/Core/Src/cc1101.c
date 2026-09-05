@@ -31,16 +31,35 @@ static uint8_t            seq;      /* for cc1101_send_test_packet */
  * silently -- both radios still transmit, they just stop understanding each
  * other.
  *
- * Still the generic 433.92 MHz / 26 MHz-crystal SmartRF baseline, never
- * regenerated for this hardware. It works, which is not the same as being
- * right.
+ * 433.92 MHz GFSK at 250 kbps, 26 MHz crystal.
  *
- * M15 moves both ends to 250 kbps. MDMCFG4=0x2D / MDMCFG3=0x3B are derivable
- * exactly, but DEVIATN, FSCTRL1, FOCCFG, BSCFG, AGCCTRL2/1/0, FREND1 and
- * TEST2/TEST1 are empirical AGC and loop-filter values that must come from
- * SmartRF Studio -- do not hand-derive them. MDMCFG1 also goes 0x22 -> 0x42
- * (4 -> 8 preamble bytes; at 250 kbps four bytes is only 128 us for the
- * receiver's AGC to settle).
+ * ---- history, because it explains the register choices ----
+ * This began as a 38.4 kbps GFSK baseline. Jumping straight to 500 kbps MSK
+ * FAILED on hardware -- most packets were lost and the display teleported. The
+ * cause was not the rate (500 kBaud is a supported, TI-characterised point) but
+ * that the rate moved while DEVIATN, the AGC block and the preamble did not.
+ *
+ * 250 kbps GFSK was chosen instead because TI publishes a COMPLETE
+ * characterisation for it at 433 MHz: -95 dBm, 127 kHz deviation, 540 kHz
+ * channel filter. The datasheet revision history even records TI correcting
+ * the 250 kBaud reference from MSK to GFSK -- this is their intended point.
+ *
+ * Five registers are therefore matched to published figures, not guessed, and
+ * MUST match ConfigSeq.sv exactly:
+ *
+ *   MDMCFG2 0x13  GFSK, unchanged -- the modulation that already worked
+ *   MDMCFG4 0x2D  DRATE_E=13, channel filter 541.7 kHz (TI's 540 kHz)
+ *   MDMCFG3 0x3B  DRATE_M=59  -> 249,939 bps
+ *   DEVIATN 0x62  +/-127.0 kHz -> exactly TI's published deviation
+ *   MDMCFG1 0x62  16 preamble bytes -> 512 us of AGC settling
+ *
+ * ---- still NOT verified at this rate ----
+ * FSCTRL1 is interpolated, not published. FOCCFG, BSCFG, AGCCTRL2/1/0, FREND1
+ * and TEST2/TEST1 are empirical AGC and loop-filter values still carrying their
+ * 38.4 kbps settings. Get them from SmartRF Studio -- do not hand-derive them.
+ *
+ * The bench link tolerates that because two radios 10 cm apart sit tens of dB
+ * above the sensitivity limit, which hides a mistuned AGC completely.
  */
 static const uint8_t cc_cfg[][2] = {
     {0x00, 0x06},  /* IOCFG2   GDO2: asserts on sync, deasserts at end of packet */
@@ -51,17 +70,24 @@ static const uint8_t cc_cfg[][2] = {
     {0x06, 0xFF},  /* PKTLEN                                                     */
     {0x07, 0x04},  /* PKTCTRL1 append RSSI/LQI/CRC_OK                            */
     {0x08, 0x05},  /* PKTCTRL0 variable length + CRC                             */
-    {0x0B, 0x06},  /* FSCTRL1                                                    */
+    {0x0B, 0x0C},  /* FSCTRL1  IF 304.7 kHz. NOT a datasheet figure -- TI gives
+                      only 152 kHz @ 38.4k and 355 kHz @ 500k, so this is
+                      interpolated. First thing to check against SmartRF.       */
     {0x0C, 0x00},  /* FSCTRL0                                                    */
     {0x0D, 0x10},  /* FREQ2  ) 433.92 MHz @ 26 MHz xtal -- BAND SPECIFIC         */
     {0x0E, 0xB0},  /* FREQ1  )                                                   */
     {0x0F, 0x71},  /* FREQ0  )                                                   */
-    {0x10, 0xCA},  /* MDMCFG4) 38.4 kbps, 101.6 kHz channel BW                   */
-    {0x11, 0x83},  /* MDMCFG3)                                                   */
+    {0x10, 0x2D},  /* MDMCFG4) 249,939 bps, 541.7 kHz channel BW
+                      (CHANBW_E=0, CHANBW_M=2, DRATE_E=13)                      */
+    {0x11, 0x3B},  /* MDMCFG3) DRATE_M=59; the exponent lives in MDMCFG4[3:0]    */
     {0x12, 0x13},  /* MDMCFG2  GFSK, 30/32 sync-word detection                   */
-    {0x13, 0x22},  /* MDMCFG1  4-byte preamble, no FEC                           */
+    {0x13, 0x62},  /* MDMCFG1  16 preamble bytes = 512 us of AGC settling, no
+                      FEC. Was 4 bytes: fine at 38.4k (833 us), only 128 us at
+                      250k, which the earlier note called marginal.             */
     {0x14, 0xF8},  /* MDMCFG0                                                    */
-    {0x15, 0x35},  /* DEVIATN  +/-20.6 kHz                                       */
+    {0x15, 0x62},  /* DEVIATN  +/-127.0 kHz, exactly TI's published 250 kBaud
+                      GFSK figure (DEVIATION_E=6, DEVIATION_M=2). Was 0x35 =
+                      20.6 kHz, correct only for 38.4 kbps.                     */
     {0x18, 0x18},  /* MCSM0    FS_AUTOCAL on IDLE->RX/TX -- do not omit          */
     {0x19, 0x16},  /* FOCCFG                                                     */
     {0x1A, 0x6C},  /* BSCFG                                                      */
@@ -263,13 +289,16 @@ static bool tx_raw(const uint8_t *payload, uint8_t len)
      * at the end of the packet, so rise-then-fall is the chip telling you the
      * whole frame was transmitted.
      *
-     * The rise can be MISSED. Sync goes out after preamble + sync = 6 bytes,
-     * which is 1.25 ms at 38.4 kbps but only 320 us at 250 kbps (and 192 us
-     * once the preamble grows to 8 bytes) -- comfortably short enough to fall
-     * between two polls. A missed rise is not a failed transmit, so fall back
-     * to TXBYTES: if the FIFO drained, the packet went out and we simply did
-     * not see the pulse. Without this the link would start "failing" at M15
-     * purely because it got faster.
+     * The rise can be MISSED, and at the current rate it usually will be.
+     * Sync goes out after preamble + sync ~= 6 bytes, which was 1.25 ms at
+     * 38.4 kbps but is only ~96 us at 500 kbps -- roughly 13x shorter, and
+     * far too brief to catch reliably between two GPIO polls.
+     *
+     * A missed rise is NOT a failed transmit, so fall back to TXBYTES: if the
+     * FIFO drained, the packet went out and we simply did not see the pulse.
+     * This fallback is what stops the link from appearing to "fail" at 500
+     * kbps purely because it got faster. Trust `sent_ok || drained`, never
+     * `sync_seen` alone.
      */
     uint32_t t0 = HAL_GetTick();
     while (HAL_GPIO_ReadPin(CC_GDO2_PORT, CC_GDO2_PIN) == GPIO_PIN_RESET) {

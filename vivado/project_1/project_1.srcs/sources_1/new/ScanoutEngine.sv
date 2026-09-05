@@ -193,11 +193,11 @@ module ScanoutEngine #(
     // if a frame arrives empty.
     // n_active is IDX_W+1 wide so a full-buffer frame (1024) is representable.
     // This is number of points on frame. when zero, it defaults to 1.
+    // n_active is how many points are on the frame
     wire [IDX_W:0] n_eff = (n_active == '0) ? {{IDX_W{1'b0}}, 1'b1} : n_active;
 
-    // Next / next-next corner, wrapping. corner_idx has not advanced yet when
-    // these are used, so both are computed from its current value. The compare
-    // is done at IDX_W+1 bits, or n_eff == 1024 would never be reached.
+    // idx_n represents the index of the current point , if the index is greater than the 
+    // # of active points, then set to 0
     wire [IDX_W:0] cn = {1'b0, corner_idx} + 1'b1;
     wire [IDX_W-1:0] idx_n  = (cn >= n_eff) ? '0 : cn[IDX_W-1:0];
     wire [IDX_W:0] nn = {1'b0, idx_n} + 1'b1;

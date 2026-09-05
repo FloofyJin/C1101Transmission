@@ -224,8 +224,7 @@ module RxSeq #(
             pt_we     <= 1'b0;
             gdo2_d    <= gdo2;
 
-            // topRF took the frame: flip to the other bank and start measuring
-            // the next frame's extent from scratch.
+            // new frame. reset the frame
             if (frame_ack) begin
                 frame_ready  <= 1'b0;
                 wr_bank      <= ~wr_bank;
@@ -379,7 +378,7 @@ module RxSeq #(
                 end
 
                 // ---- commit: replay the staged payload into PointRam ----
-                // One point per cycle, so a full 30-point packet costs 30 cycles
+                // One point per cycle, so a full 28-point packet costs 28 cycles
                 // (240 ns). The radio cannot deliver the next packet for at
                 // least ~3 ms, so this is free.
                 R_STORE: begin

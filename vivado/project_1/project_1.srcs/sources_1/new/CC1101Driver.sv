@@ -146,7 +146,7 @@ always @(posedge clk) begin
 
                         CMD_WRITE_REG: begin
                             spi_tx <= cmd_addr;
-                            spi_hold <= 1'b1;
+                            spi_hold <= 1'b1; // 1'b1 will  pull down cs line
                             is_receiving <= 1'b0;
                             state <= COMMUNICATE_S;
                             rtn_state <= WR_DATA_S;

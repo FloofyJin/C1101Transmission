@@ -267,7 +267,7 @@ module topRF #(
     (* mark_debug = "true" *) logic [PT_IDX_W:0]   b_frame_points;
     (* mark_debug = "true" *) logic                sc_wrap;
     (* mark_debug = "true" *) logic                rd_bank;
-    (* mark_debug = "true" *) logic [PT_IDX_W:0]   n_active_reg;
+    (* mark_debug = "true" *) logic [PT_IDX_W:0]   n_active_reg; // refers to how many points are drawn alr
 
     // Swap ONLY at the scanout's wrap. Flipping mid-pass would move the tear
     // rather than remove it -- same reason a framebuffer swaps on vsync.
@@ -276,11 +276,10 @@ module topRF #(
     always_ff @(posedge sysclk) begin
         if (rst) begin
             rd_bank      <= 1'b0;
-            n_active_reg <= (PT_IDX_W+1)'(1024); // the seeded checkerboard:
-                                                  // 128 rows x 4 spans x 2 points
+            n_active_reg <= (PT_IDX_W+1)'(1024); // the seeded checkerboard: 128 rows x 4 spans x 2 points
         end else if (do_swap) begin
             rd_bank      <= ~rd_bank;
-            n_active_reg <= b_frame_points;
+            n_active_reg <= b_frame_points; // tell us how many points we received from rxSeq
         end
     end
 

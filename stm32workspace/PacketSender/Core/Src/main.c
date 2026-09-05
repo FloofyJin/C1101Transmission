@@ -22,7 +22,17 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "cc1101.h"
+#include "animation.h"
+#include "animation_data.h"
 #include <stdio.h>
+
+/*
+ * 1 = play the JSON-derived clip from animation_data.c at a fixed frame rate.
+ * 0 = the original rotating triangle, which is still the better bring-up test
+ *     because it needs no external data and moves continuously.
+ */
+#define USE_ANIMATION   1
+#define ANIMATION_FPS   20
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -159,6 +169,10 @@ static void build_triangle(void)
     }
 }
 
+/* Only the rotating-triangle demo needs the sine table and rotate_into().
+   Compiling them out under USE_ANIMATION avoids -Wunused-function and
+   -Wunused-const-variable, both of which -Wall turns on for C. */
+#if !USE_ANIMATION
 /*
  * Q15 sine, one revolution in ROT_STEPS steps. A table rather than sinf() so
  * this pulls in no libm and the arithmetic is exactly reproducible.
@@ -205,6 +219,7 @@ static void rotate_into(cc1101_point_t *out, uint8_t angle)
         out[i].y = (uint8_t)y;
     }
 }
+#endif /* !USE_ANIMATION */
 /* USER CODE END 0 */
 
 /**
@@ -273,6 +288,18 @@ int main(void)
          TRI_ROWS, TRI_POINTS,
          (TRI_POINTS + CC_MAX_POINTS - 1) / CC_MAX_POINTS, ROT_STEPS);
 
+#if USE_ANIMATION
+  /* Paced playback of the clip generated from demoAnimation.json. The rate is
+     wall-clock, not data-driven: every frame occupies the same period however
+     many spans it holds, so playback speed no longer tracks picture
+     complexity. See animation.h. */
+  static animation_t anim;
+  animation_init(&anim, &animation_clip, ANIMATION_FPS);
+  printf("animation: %u frames @ %d fps (%lu ms/frame)\r\n",
+         (unsigned)animation_clip.n_frames, ANIMATION_FPS,
+         (unsigned long)anim.period_ms);
+#endif
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -301,6 +328,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+#if USE_ANIMATION
+    /* Non-blocking: returns immediately until the next frame is due, then
+       transmits exactly one frame. The wait is what fixes the cadence -- see
+       the pacing discussion in animation.h. */
+    (void)animation_tick(&anim);
+    sent   = anim.frames_sent;
+    failed = anim.frames_failed;
+#else
     bool ok;
     /* One rotation step per frame. send_frame splits TRI_POINTS into
        ceil(n/28) packets and marks the LAST one end-of-frame, which is what
@@ -318,6 +353,7 @@ int main(void)
     ok = cc1101_send_frame(tri, TRI_POINTS);
 
     if (ok) sent++; else failed++;
+#endif
 
     /*
      * Report once a second, never from inside the transmit path.
@@ -334,21 +370,38 @@ int main(void)
                "sync=%d done=%d drained=%d timeout=%d\r\n",
                sent, failed, d->txbytes, d->marcstate,
                d->sync_seen, d->sent_ok, d->drained, d->timed_out);
+#if USE_ANIMATION
+        /* late climbing steadily means the clip is too dense for the frame
+           rate: the radio cannot deliver a frame inside its period. Lower
+           ANIMATION_FPS, raise the link rate, or simplify the frames.
+           tools/anim2c.py predicts this at conversion time. */
+        printf("  anim: frame %u/%u  loops=%lu late=%lu\r\n",
+               (unsigned)anim.index, (unsigned)animation_clip.n_frames,
+               (unsigned long)anim.loops, (unsigned long)anim.frames_late);
+#endif
     }
 
     /*
-     * Between FRAMES, not between packets -- send_frame already sent all five
-     * back to back. This is now the ANIMATION rate, so it is no longer free:
-     * every millisecond here is a millisecond of rotation.
+     * TRIANGLE PATH ONLY. Under USE_ANIMATION the cadence is set by
+     * animation_tick's deadline schedule instead, and this delay would just
+     * fight it -- see animation.h.
      *
-     * At the config table's 38.4 kbps a 59-byte packet is ~14 ms of airtime,
-     * so a frame is already ~75 ms and a revolution takes ROT_STEPS * (75 +
-     * this). At 0 that is ~5 s per turn. Raise it to slow the spin down;
-     * the DISPLAY refresh is unaffected either way -- the FPGA redraws
-     * PointRam continuously no matter how often the contents change, which is
-     * the entire point of decoupling the two rates.
+     * Between FRAMES, not between packets -- send_frame already sent all five
+     * back to back. This is the rotation rate, so it is not free: every
+     * millisecond here is a millisecond of spin.
+     *
+     * At the config table's 500 kbps a 59-byte packet is ~1.1 ms of airtime,
+     * so a 5-packet frame is ~6 ms and a revolution takes ROT_STEPS * (6 +
+     * this). At 0 that is well under a second per turn -- much faster than the
+     * ~5 s it took at 38.4 kbps, so raise this if the spin is now a blur.
+     *
+     * The DISPLAY refresh is unaffected either way: the FPGA redraws PointRam
+     * continuously no matter how often the contents change, which is the whole
+     * point of decoupling the two rates.
      */
+#if !USE_ANIMATION
     HAL_Delay(0);
+#endif
   }
   /* USER CODE END 3 */
 }

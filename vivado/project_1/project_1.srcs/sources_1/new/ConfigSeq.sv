@@ -8,11 +8,42 @@
 // was written; on the first mismatch it latches `fail_addr` / `fail_got` so the
 // ILA tells you exactly which register didn't stick.
 //
-// IMPORTANT -- the register VALUES below are a widely-used 433.92 MHz GFSK
-// baseline (SmartRF-style, assuming a 26 MHz crystal). They are NOT verified for
-// your specific hardware. Regenerate with TI SmartRF Studio for your band, data
-// rate, and crystal. In particular FREQ2/1/0 (0x0D/0x0E/0x0F) are band-specific.
-// Read-back verify catches SPI/wiring errors, NOT wrong-but-valid RF values.
+// IMPORTANT -- 433.92 MHz GFSK at 250 kbps, 26 MHz crystal.
+//
+// ---- history, because it explains the register choices ----
+// This began as a 38.4 kbps GFSK baseline. An attempt to jump straight to
+// 500 kbps MSK FAILED on hardware: the link dropped most packets and the
+// display teleported. The cause was not the rate -- 500 kBaud is a supported,
+// TI-characterised operating point -- but that the rate moved while DEVIATN,
+// the AGC block and the preamble did not. 250 kbps GFSK was chosen instead
+// because TI publishes a COMPLETE characterisation for it at 433 MHz:
+//
+//   -95 dBm sensitivity, 127 kHz deviation, 540 kHz channel filter
+//   (the datasheet revision history even records TI correcting the 250 kBaud
+//    reference from MSK to GFSK -- this is their intended operating point)
+//
+// So four registers here are matched to published figures rather than guessed:
+//
+//   MDMCFG2 0x13  GFSK, unchanged -- the modulation that already worked
+//   MDMCFG4 0x2D  DRATE_E=13, channel filter 541.7 kHz (TI's 540 kHz)
+//   MDMCFG3 0x3B  DRATE_M=59  -> 249,939 bps
+//   DEVIATN 0x62  +/-127.0 kHz  -> exactly TI's published deviation
+//   MDMCFG1 0x62  16 preamble bytes -> 512 us of AGC settling
+//
+// ---- still NOT verified for this rate ----
+// FSCTRL1 is interpolated, not published (see its comment below). FOCCFG,
+// BSCFG, AGCCTRL2/1/0, FREND1 and TEST2/TEST1 are empirical AGC and
+// loop-filter values still carrying their 38.4 kbps settings. Get them from
+// TI SmartRF Studio; do not hand-derive them.
+//
+// The bench link tolerates that because two radios 10 cm apart sit tens of dB
+// above the sensitivity limit, which hides a mistuned AGC. It will not survive
+// real distance.
+//
+// FREQ2/1/0 (0x0D/0x0E/0x0F) remain band-specific.
+// Read-back verify catches SPI/wiring errors, NOT wrong-but-valid RF values,
+// and it CANNOT tell you that this table disagrees with the STM32's.
+// Every change here must be mirrored in PacketSender/Core/Src/cc1101.c.
 //------------------------------------------------------------------------------
 module ConfigSeq #(
     parameter int CLK_HZ     = 125_000_000,
@@ -73,17 +104,27 @@ module ConfigSeq #(
         16'h06_FF,  // PKTLEN    max (variable-length mode)
         16'h07_04,  // PKTCTRL1  append status bytes (RSSI/LQI/CRC_OK)
         16'h08_05,  // PKTCTRL0  variable length + CRC enabled
-        16'h0B_06,  // FSCTRL1
+        16'h0B_0C,  // FSCTRL1   IF 304.7 kHz. NOT a datasheet figure -- TI only
+                    //           publishes 152 kHz @ 38.4k and 355 kHz @ 500k, so
+                    //           this is interpolated for the 540 kHz filter.
+                    //           FIRST thing to check against SmartRF Studio.
         16'h0C_00,  // FSCTRL0
         16'h0D_10,  // FREQ2     \
         16'h0E_B0,  // FREQ1      >  ~433.92 MHz @ 26 MHz xtal -- BAND SPECIFIC
         16'h0F_71,  // FREQ0     /
-        16'h10_CA,  // MDMCFG4
-        16'h11_83,  // MDMCFG3
-        16'h12_13,  // MDMCFG2   GFSK, 30/32 sync-word detection
-        16'h13_22,  // MDMCFG1
+        16'h10_2D,  // MDMCFG4   249,939 bps, 541.7 kHz channel BW
+                    //           (CHANBW_E=0, CHANBW_M=2, DRATE_E=13)
+        16'h11_3B,  // MDMCFG3   DRATE_M=59; the exponent is in MDMCFG4[3:0]
+        16'h12_13,  // MDMCFG2   GFSK, 30/32 sync-word detection. 8'b0 001 0 011
+        16'h13_62,  // MDMCFG1   16 preamble bytes = 512 us for the receiver's
+                    //           AGC to settle. Was 4 bytes: fine at 38.4k
+                    //           (833 us) but only 128 us at 250k, which the
+                    //           earlier notes already called marginal. Costs
+                    //           ~28 spans of budget; worth it.
         16'h14_F8,  // MDMCFG0
-        16'h15_35,  // DEVIATN
+        16'h15_62,  // DEVIATN   +/-127.0 kHz, which is exactly TI's published
+                    //           250 kBaud GFSK figure (DEVIATION_E=6, _M=2).
+                    //           Was 0x35 = 20.6 kHz, correct only for 38.4k.
         16'h18_18,  // MCSM0     FS_AUTOCAL on IDLE->RX/TX  (do not omit)
         16'h19_16,  // FOCCFG
         16'h1A_6C,  // BSCFG

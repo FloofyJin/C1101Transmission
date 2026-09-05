@@ -1,0 +1,8 @@
+../Core/Src/animation.c:20:17:period_from_fps	3
+../Core/Src/animation.c:30:6:animation_init	2
+../Core/Src/animation.c:48:6:animation_stop	2
+../Core/Src/animation.c:53:6:animation_start	3
+../Core/Src/animation.c:62:6:animation_rewind	2
+../Core/Src/animation.c:69:6:animation_set_fps	2
+../Core/Src/animation.c:75:10:animation_next_points	4
+../Core/Src/animation.c:81:6:animation_tick	10

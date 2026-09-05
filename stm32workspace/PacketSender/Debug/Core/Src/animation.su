@@ -1,0 +1,8 @@
+../Core/Src/animation.c:20:17:period_from_fps	24	static
+../Core/Src/animation.c:30:6:animation_init	24	static
+../Core/Src/animation.c:48:6:animation_stop	16	static
+../Core/Src/animation.c:53:6:animation_start	16	static
+../Core/Src/animation.c:62:6:animation_rewind	16	static
+../Core/Src/animation.c:69:6:animation_set_fps	16	static
+../Core/Src/animation.c:75:10:animation_next_points	16	static
+../Core/Src/animation.c:81:6:animation_tick	32	static
