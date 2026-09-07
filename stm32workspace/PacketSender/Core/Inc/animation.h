@@ -39,12 +39,19 @@
  * 30 fps and you play it at 20, it will be perfectly smooth and running at
  * two-thirds speed. Drop source frames in the converter to keep real time.
  *
- * THE DATA LIVES IN FLASH
- * -----------------------
- * The F410RB has no filesystem, so animations are converted on the host by
- * tools/anim2c.py and linked in as `const` tables. cc1101_send_frame() takes a
- * const pointer, so frames are transmitted straight out of flash and never
- * occupy RAM.
+ * WHERE THE DATA LIVES: TWO OPTIONS
+ * ---------------------------------
+ * 1. FLASH (animation_init). The F410RB has no filesystem, so animations are
+ *    converted on the host by tools/anim2c.py and linked in as `const` tables.
+ *    cc1101_send_frame() takes a const pointer, so frames are transmitted
+ *    straight out of flash and never occupy RAM. Costs nothing at runtime, but
+ *    128 KB of flash is only ~300 frames -- about 15 seconds at 20 fps.
+ *
+ * 2. STREAMED (animation_init_source). Frames arrive over the UART from a PC
+ *    that holds the whole clip; see anim_stream.h. Unlimited length, at the
+ *    cost of a few KB of RAM and a tethered PC.
+ *
+ * The pacing below is identical either way. Only the frame lookup differs.
  *
  * USAGE
  * -----
@@ -90,20 +97,49 @@ typedef struct {
 } anim_clip_t;
 
 /*
+ * ---- the other way to feed this module: a live frame source ----
+ *
+ * A clip in flash tops out around 300 frames on a 128 KB part, which is 15
+ * seconds. Anything longer has to arrive at runtime, so playback can also pull
+ * from a callback instead -- see anim_stream.h, which implements one over the
+ * UART.
+ *
+ * Two function pointers rather than a compile-time #if, so animation.c stays
+ * ignorant of UARTs, DMA and framing. It knows only "ask for a frame, send it,
+ * hand it back". That also means the streaming path can be unit-tested on a PC
+ * with a stub source, which a direct call into anim_stream.c would not allow.
+ *
+ * next():    return the frame to send now, or NULL for "nothing ready yet".
+ *            NULL is NOT an error -- the display keeps redrawing whatever is
+ *            already in PointRam, so the correct response is to skip the slot
+ *            quietly and count it. The pointer must stay valid until done().
+ * done():    called once after the frame has been transmitted. Only then is
+ *            the buffer free, which is why release is a separate call.
+ */
+typedef const cc1101_point_t *(*anim_source_fn)(void *ctx, uint16_t *n_points);
+typedef void                  (*anim_done_fn)(void *ctx);
+
+/*
  * Playback state. One per clip being played; you almost certainly want exactly
  * one. Treat the fields as read-only from outside -- use the functions below.
  */
 typedef struct {
-    const anim_clip_t *clip;
+    const anim_clip_t *clip;   /* flash playback; NULL when streaming      */
     uint32_t period_ms;        /* wall-clock time each frame must occupy   */
     uint32_t next_deadline;    /* absolute tick when the next frame is due */
-    uint16_t index;            /* which frame goes out next               */
+    uint16_t index;            /* which frame goes out next (clip mode)    */
     bool     running;
+
+    /* ---- streaming; all NULL in clip mode ---- */
+    anim_source_fn source;
+    anim_done_fn   source_done;
+    void          *source_ctx;
 
     /* ---- statistics, for the once-a-second report in main ---- */
     uint32_t frames_sent;      /* frames where every packet was accepted   */
     uint32_t frames_failed;    /* at least one packet failed to transmit   */
     uint32_t frames_late;      /* frames that overran their time budget    */
+    uint32_t frames_starved;   /* slot came due with no frame ready        */
     uint32_t loops;            /* completed passes over the clip           */
 } animation_t;
 
@@ -118,6 +154,18 @@ typedef struct {
  * clip and warns per frame.
  */
 void animation_init(animation_t *a, const anim_clip_t *clip, uint16_t fps);
+
+/*
+ * Same, but frames come from a live source instead of a flash clip. Everything
+ * about the cadence is identical -- same deadline accumulator, same overrun
+ * guard -- because the pacing has nothing to do with where the points came
+ * from.
+ *
+ * There is no loop point and no frame index in this mode: the source decides
+ * what "next" means and when the material ends.
+ */
+void animation_init_source(animation_t *a, anim_source_fn next,
+                           anim_done_fn done, void *ctx, uint16_t fps);
 
 /*
  * Call as often as you like from the main loop. Does nothing until the next

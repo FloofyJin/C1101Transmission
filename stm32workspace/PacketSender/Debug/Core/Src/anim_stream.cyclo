@@ -1,0 +1,9 @@
+../Core/Src/anim_stream.c:73:24:crc16_step	1
+../Core/Src/anim_stream.c:96:24:dma_head	1
+../Core/Src/anim_stream.c:106:13:send_ctl	2
+../Core/Src/anim_stream.c:115:6:anim_stream_init	2
+../Core/Src/anim_stream.c:193:13:parse_byte	20
+../Core/Src/anim_stream.c:324:6:anim_stream_poll	4
+../Core/Src/anim_stream.c:353:23:anim_stream_next	3
+../Core/Src/anim_stream.c:361:6:anim_stream_release	2
+../Core/Src/anim_stream.c:376:28:anim_stream_get_stats	1

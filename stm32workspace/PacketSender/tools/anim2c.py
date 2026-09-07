@@ -28,6 +28,18 @@ blanking from segment parity, so each drawn row is a PAIR of points
 (xL,y) then (xR,y). That is why every frame must hold an EVEN number of
 points -- an odd count would split a span across a packet boundary.
 
+WHEN THIS IS THE WRONG TOOL
+---------------------------
+Flash is 128 KB, so a clip tops out around 300 frames at 160 points -- roughly
+15 seconds at 20 fps. Past that the link step fails with
+
+    section `.rodata' will not fit in region `FLASH'
+
+and no amount of converting will fix it. Use tools/animstream.py instead: it
+pushes frames over the UART at runtime, so clip length stops mattering. This
+script stays the right choice for anything short enough to fit, because it
+needs no PC attached while the board runs.
+
 USAGE
 -----
     python tools/anim2c.py Core/Src/demoAnimation.json --fps 20 --kbps 38.4

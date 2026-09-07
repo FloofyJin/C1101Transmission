@@ -27,8 +27,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
  ../Core/Inc/cc1101.h ../Core/Inc/main.h ../Core/Inc/animation.h \
- ../Core/Inc/cc1101.h ../Core/Inc/animation_data.h \
- ../Core/Inc/animation.h
+ ../Core/Inc/cc1101.h ../Core/Inc/anim_stream.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -61,5 +60,4 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/main.h:
 ../Core/Inc/animation.h:
 ../Core/Inc/cc1101.h:
-../Core/Inc/animation_data.h:
-../Core/Inc/animation.h:
+../Core/Inc/anim_stream.h:

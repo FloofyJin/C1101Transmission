@@ -23,16 +23,37 @@
 /* USER CODE BEGIN Includes */
 #include "cc1101.h"
 #include "animation.h"
-#include "animation_data.h"
 #include <stdio.h>
 
 /*
- * 1 = play the JSON-derived clip from animation_data.c at a fixed frame rate.
+ * 1 = play a clip at a fixed frame rate (see ANIM_FROM_UART below).
  * 0 = the original rotating triangle, which is still the better bring-up test
  *     because it needs no external data and moves continuously.
  */
 #define USE_ANIMATION   1
 #define ANIMATION_FPS   20
+
+/*
+ * WHERE THE FRAMES COME FROM
+ *
+ *   1 = streamed over the UART from tools/animstream.py. Unlimited clip
+ *       length, needs a PC attached. Costs ~2.5 KB of the 32 KB RAM.
+ *   0 = compiled into flash by tools/anim2c.py. No PC needed, but 128 KB of
+ *       flash is about 300 frames -- 15 s at 20 fps -- and this is what
+ *       overflowed .rodata when the clip grew to 200+ frames.
+ *
+ * When streaming, EXCLUDE Core/Src/animation_data.c from the build (right
+ * click -> Resource Configurations -> Exclude from Build). The linker's
+ * --gc-sections will usually drop it anyway, but excluding it makes the flash
+ * saving explicit instead of dependent on link flags.
+ */
+#define ANIM_FROM_UART  1
+
+#if USE_ANIMATION && ANIM_FROM_UART
+#include "anim_stream.h"
+#elif USE_ANIMATION
+#include "animation_data.h"
+#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -111,8 +132,12 @@ UART_HandleTypeDef huart2;
    8 bits -- these are offsets, not coordinates. */
 static int16_t base_x[TRI_POINTS], base_y[TRI_POINTS];
 
-/* One frame's worth of screen coordinates, rewritten each rotation step. */
+/* One frame's worth of screen coordinates, rewritten each rotation step.
+   Only rotate_into() touches it, and that is compiled out under
+   USE_ANIMATION -- so guard it the same way or it warns as unused. */
+#if !USE_ANIMATION
 static cc1101_point_t tri[TRI_POINTS];
+#endif
 
 /* USER CODE END PV */
 
@@ -289,15 +314,29 @@ int main(void)
          (TRI_POINTS + CC_MAX_POINTS - 1) / CC_MAX_POINTS, ROT_STEPS);
 
 #if USE_ANIMATION
-  /* Paced playback of the clip generated from demoAnimation.json. The rate is
-     wall-clock, not data-driven: every frame occupies the same period however
-     many spans it holds, so playback speed no longer tracks picture
-     complexity. See animation.h. */
+  /* Paced playback. The rate is wall-clock, not data-driven: every frame
+     occupies the same period however many spans it holds, so playback speed
+     no longer tracks picture complexity. See animation.h. */
   static animation_t anim;
+
+#if ANIM_FROM_UART
+  /* Arm the DMA receiver BEFORE announcing anything, so the hello message and
+     the first window update leave with the receiver already listening. */
+  anim_stream_init(&huart2);
+  animation_init_source(&anim, anim_stream_next, anim_stream_release,
+                        NULL, ANIMATION_FPS);
+  printf("animation: streaming from UART @ %d fps (%lu ms/frame), "
+         "%d slots x %d points\r\n",
+         ANIMATION_FPS, (unsigned long)anim.period_ms,
+         ANIM_STREAM_SLOTS, ANIM_STREAM_MAX_POINTS);
+  printf("  run: python tools/animstream.py <clip.json> --baud %lu\r\n",
+         (unsigned long)huart2.Init.BaudRate);
+#else
   animation_init(&anim, &animation_clip, ANIMATION_FPS);
-  printf("animation: %u frames @ %d fps (%lu ms/frame)\r\n",
+  printf("animation: %u frames from flash @ %d fps (%lu ms/frame)\r\n",
          (unsigned)animation_clip.n_frames, ANIMATION_FPS,
          (unsigned long)anim.period_ms);
+#endif
 #endif
 
   /* USER CODE END 2 */
@@ -329,6 +368,13 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 #if USE_ANIMATION
+#if ANIM_FROM_UART
+    /* Drain the DMA ring into decoded frames. Must run far more often than
+       once per frame period: nothing polls while cc1101_send_frame() is
+       blocking, so this call is the only thing keeping the 1 KB ring from
+       lapping itself. It is cheap and bounded -- see anim_stream.c. */
+    anim_stream_poll();
+#endif
     /* Non-blocking: returns immediately until the next frame is due, then
        transmits exactly one frame. The wait is what fixes the cadence -- see
        the pacing discussion in animation.h. */
@@ -375,9 +421,41 @@ int main(void)
            rate: the radio cannot deliver a frame inside its period. Lower
            ANIMATION_FPS, raise the link rate, or simplify the frames.
            tools/anim2c.py predicts this at conversion time. */
+#if ANIM_FROM_UART
+        /*
+         * Two different "the animation stutters" causes, and this line tells
+         * them apart:
+         *   late    -> the RADIO cannot deliver a frame in one period
+         *   starved -> the UART/PC cannot deliver a frame in one period
+         * They need opposite fixes, so never guess between them.
+         */
+        const anim_stream_stats_t *s = anim_stream_get_stats();
+        printf("  anim: late=%lu starved=%lu | rx: frames=%lu depth=%u "
+               "crc=%lu len=%lu ovf=%lu resync=%lu bytes=%lu\r\n",
+               (unsigned long)anim.frames_late,
+               (unsigned long)anim.frames_starved,
+               (unsigned long)s->frames_ok, (unsigned)s->depth,
+               (unsigned long)s->crc_errors, (unsigned long)s->len_errors,
+               (unsigned long)s->overflows, (unsigned long)s->resyncs,
+               (unsigned long)s->bytes);
+        /*
+         * bytes==0 means the DMA never moved anything, which is a different
+         * fault from "frames are arriving but failing". Three suspects, in
+         * the order they are worth checking:
+         *   1. animstream.py is not running, or is on the wrong COM port
+         *   2. --baud does not match huart2.Init.BaudRate
+         *   3. USART2_RX is not on DMA1 stream 5 channel 4 on this part
+         *      (RM0401 table 27) -- the one thing in anim_stream_init() that
+         *      could not be checked from the HAL headers
+         */
+        if (s->bytes == 0)
+            printf("  !! no UART bytes at all -- check animstream.py is "
+                   "running, --baud matches, and DMA1_S5C4 is USART2_RX\r\n");
+#else
         printf("  anim: frame %u/%u  loops=%lu late=%lu\r\n",
                (unsigned)anim.index, (unsigned)animation_clip.n_frames,
                (unsigned long)anim.loops, (unsigned long)anim.frames_late);
+#endif
 #endif
     }
 
@@ -506,7 +584,12 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  /* 230400, not 115200: a streamed frame is 180 points x 2 B + 8 B of
+     framing = 368 B, and 20 fps of that is 7360 B/s. 115200 delivers
+     11520 B/s, so the link would sit at 64% utilisation with no room
+     for the retransmit-free protocol to absorb a stall. Mirrored in
+     PacketSender.ioc so CubeMX regeneration keeps it. */
+  huart2.Init.BaudRate = 230400;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
