@@ -26,33 +26,57 @@
 #include <stdio.h>
 
 /*
- * 1 = play a clip at a fixed frame rate (see ANIM_FROM_UART below).
- * 0 = the original rotating triangle, which is still the better bring-up test
- *     because it needs no external data and moves continuously.
+ * ===================================================================
+ * WHERE THE FRAMES COME FROM -- set exactly ONE of these to 1.
+ * ===================================================================
+ *
+ * All three feed animation.c, so the cadence is identical in every mode: one
+ * frame per period, wall-clock, regardless of how many spans it holds. Only
+ * the source of the points differs.
+ *
+ *   ANIM_FROM_UART       Streamed from the PC by tools/animstream.py.
+ *                        Unlimited clip length -- this is the only mode that
+ *                        can play all 4381 frames of Bad Apple. Needs a PC
+ *                        attached and ~2.5 KB of the 32 KB RAM.
+ *
+ *   COMPILED_ANIMATION   Baked into flash by tools/anim2c.py. Runs standalone
+ *                        with no PC and costs no RAM, but 128 KB of flash is
+ *                        only ~300 frames (15 s at 20 fps) before .rodata
+ *                        overflows the region.
+ *                        REQUIRES animation_data.c/.h, which are generated:
+ *                            python tools/anim2c.py <clip>.json --fps 20 \
+ *                                                   --kbps 250 --preamble 16
+ *                        They are deleted from the tree right now, so this
+ *                        mode will not link until you regenerate them.
+ *
+ *   TRIANGLE_ANIMATION   A filled triangle rotating on the spot, generated on
+ *                        the board. No PC, no JSON, no flash tables -- the
+ *                        bring-up pattern. When the scope is dark, this is the
+ *                        mode that says whether the fault is upstream of the
+ *                        transmitter at all.
  */
-#define USE_ANIMATION   1
-#define ANIMATION_FPS   20
+#define ANIM_FROM_UART      1
+#define COMPILED_ANIMATION  0
+#define TRIANGLE_ANIMATION  0
+
+#define ANIMATION_FPS       20
 
 /*
- * WHERE THE FRAMES COME FROM
- *
- *   1 = streamed over the UART from tools/animstream.py. Unlimited clip
- *       length, needs a PC attached. Costs ~2.5 KB of the 32 KB RAM.
- *   0 = compiled into flash by tools/anim2c.py. No PC needed, but 128 KB of
- *       flash is about 300 frames -- 15 s at 20 fps -- and this is what
- *       overflowed .rodata when the clip grew to 200+ frames.
- *
- * When streaming, EXCLUDE Core/Src/animation_data.c from the build (right
- * click -> Resource Configurations -> Exclude from Build). The linker's
- * --gc-sections will usually drop it anyway, but excluding it makes the flash
- * saving explicit instead of dependent on link flags.
+ * Catch a mis-set mode at COMPILE time. The #if/#elif chains below would
+ * otherwise just silently pick the first one that is true, or fall through to
+ * nothing and build a firmware that transmits an uninitialised buffer -- which
+ * on a scope looks like a wiring fault, not a configuration mistake.
  */
-#define ANIM_FROM_UART  1
+#if (ANIM_FROM_UART + COMPILED_ANIMATION + TRIANGLE_ANIMATION) != 1
+#error "Set exactly one of ANIM_FROM_UART, COMPILED_ANIMATION, TRIANGLE_ANIMATION"
+#endif
 
-#if USE_ANIMATION && ANIM_FROM_UART
+#if ANIM_FROM_UART
 #include "anim_stream.h"
-#elif USE_ANIMATION
+#elif COMPILED_ANIMATION
 #include "animation_data.h"
+#else
+#include "triangle.h"
 #endif
 /* USER CODE END Includes */
 
@@ -63,56 +87,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
-/*
- * ---- filled triangle, as scanline spans ----------------------------------
- *
- * NOT a 3-point outline. ScanoutEngine derives blanking from segment PARITY --
- * even segments are spans, odd are connectors -- so a 3-corner polygon gets
- * two of its three sides blanked. That is why the seeded triangle outline was
- * retired on the FPGA side. The pipeline draws scanline fill, so the triangle
- * has to arrive as fill: one span per row, two points each.
- *
- *          apex (CX, Y_TOP)
- *               /\
- *              /  \          row i:   xL(i) ......... xR(i)   all at y(i)
- *             /    \
- *            /______\        base 2*HALF_BASE wide, at Y_BOT
- *
- * TRI_ROWS sets the row pitch: TRI_H / (TRI_ROWS - 1). Keep it near the FPGA's
- * SPACING (4 coordinate units) -- the design rule is
- * SPACING ~= row pitch ~= beam spot, and a finer pitch than SPACING just
- * spends DAC time without making the fill look any more solid.
- *
- *   64 rows over 173 units -> 2.7 units/row, 128 points, 5 packets/frame
- *
- * ---- rotation ------------------------------------------------------------
- *
- * The shape is built ONCE about its own centroid and rotated into place each
- * frame. Rotating the span endpoints is legitimate here because blanking is
- * derived from segment PARITY, not from y being constant: a rotated span is
- * still segment 2i (even -> drawn) and its connector still 2i+1 (odd ->
- * blanked). The fill lines rotate with the shape, which is how a rotating
- * solid should look, and rigid rotation preserves path length so the DAC
- * budget does not change with angle.
- *
- * The size is set by the ROTATION CIRCLE, not by the screen. Every point must
- * stay inside 0..255 at EVERY angle or the coordinate wraps and draws a line
- * across the image. With the centroid at (128,128) the budget is a radius of
- * 128; B=100/H=173 puts the base corners at 115.4 and the apex at 115.3 --
- * near-equal, which is the best aspect ratio for filling a circle. Swept over
- * all angles the extremes are 12.4 and 243.6.
- */
-#define TRI_ROWS       64            /* spans; 2 points each                  */
-#define TRI_B          100           /* half base width, from the centroid    */
-#define TRI_H          173           /* apex-to-base height                   */
-
-#define TRI_POINTS     (2 * TRI_ROWS)   /* must be EVEN and <= CC_FRAME_POINTS */
-
-#define ROT_STEPS      64            /* angles per revolution; power of two   */
-#define ROT_CX         128           /* rotation centre                       */
-#define ROT_CY         128
-#define ROT_ADVANCE    1             /* angle steps per frame; negative = CW  */
 
 /* USER CODE END PD */
 
@@ -128,16 +102,8 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
-/* The shape about its own centroid, built once. Signed, and NOT clamped to
-   8 bits -- these are offsets, not coordinates. */
-static int16_t base_x[TRI_POINTS], base_y[TRI_POINTS];
-
-/* One frame's worth of screen coordinates, rewritten each rotation step.
-   Only rotate_into() touches it, and that is compiled out under
-   USE_ANIMATION -- so guard it the same way or it warns as unused. */
-#if !USE_ANIMATION
-static cc1101_point_t tri[TRI_POINTS];
-#endif
+/* Playback state. One per clip; the mode block below binds it to a source. */
+static animation_t anim;
 
 /* USER CODE END PV */
 
@@ -158,93 +124,106 @@ int __io_putchar(int ch) {            /* retarget printf to the ST-Link VCP */
 }
 
 /*
- * Fill `tri` with one span per row, bottom to top.
- *
- * Rows alternate direction (SERPENTINE) so the row-to-row connector is a short
- * hop along the shape's edge instead of a jump back across the figure. Every
- * connector is blanked either way, but a short one costs far less DAC time --
- * the beam still has to physically travel it.
- *
- * Point ORDER carries the blanking, so it is not cosmetic:
- *
- *   points 2i, 2i+1   -> segment 2i   EVEN -> span      -> drawn
- *   points 2i+1, 2i+2 -> segment 2i+1 ODD  -> connector -> blanked
- *
- * TRI_POINTS is even, so the wrap segment (last point back to point 0) is odd
- * and gets blanked too. That matters: the wrap runs from the apex all the way
- * down to the bottom-left corner.
+ * Bind the playback engine to whichever source the mode selects, and say on
+ * the console which one it is -- the single most useful line in the log, since
+ * "nothing is moving" means something different in each mode.
  */
-static void build_triangle(void)
+static void animation_setup(void)
 {
-    const int span = TRI_ROWS - 1;    /* so row `span` lands exactly on the apex */
+#if ANIM_FROM_UART
+    /* Arm the DMA receiver BEFORE announcing anything, so the hello message
+       and the first window update leave with the receiver already listening. */
+    anim_stream_init(&huart2);
+    animation_init_source(&anim, anim_stream_next, anim_stream_release,
+                          NULL, ANIMATION_FPS);
+    printf("animation: UART stream @ %d fps (%lu ms/frame), "
+           "%d slots x %d points\r\n",
+           ANIMATION_FPS, (unsigned long)anim.period_ms,
+           ANIM_STREAM_SLOTS, ANIM_STREAM_MAX_POINTS);
+    printf("  run: python tools/animstream.py <clip>.json --baud %lu\r\n",
+           (unsigned long)huart2.Init.BaudRate);
 
-    for (int i = 0; i < TRI_ROWS; i++) {
-        /* Centroid-relative: the base sits at -H/3 and the apex at +2H/3, which
-           is what puts the rotation centre at the centroid rather than at the
-           base. Rotating about anything else makes the triangle wobble. */
-        int y    = -(TRI_H / 3) + (i * TRI_H) / span;
-        int half = (TRI_B * (span - i)) / span;      /* full at base, 0 at apex */
-        int xl   = -half;
-        int xr   =  half;
+#elif COMPILED_ANIMATION
+    animation_init(&anim, &animation_clip, ANIMATION_FPS);
+    printf("animation: %u frames from flash @ %d fps (%lu ms/frame)\r\n",
+           (unsigned)animation_clip.n_frames, ANIMATION_FPS,
+           (unsigned long)anim.period_ms);
 
-        if (i & 1) { int t = xl; xl = xr; xr = t; }   /* odd rows run right-to-left */
-
-        base_x[2*i    ] = (int16_t)xl;  base_y[2*i    ] = (int16_t)y;
-        base_x[2*i + 1] = (int16_t)xr;  base_y[2*i + 1] = (int16_t)y;
-    }
+#else /* TRIANGLE_ANIMATION */
+    triangle_init();
+    animation_init_source(&anim, triangle_next, triangle_done,
+                          NULL, ANIMATION_FPS);
+    printf("animation: rotating triangle @ %d fps (%lu ms/frame)\r\n",
+           ANIMATION_FPS, (unsigned long)anim.period_ms);
+    printf("  %d rows, %d points, %d packets/frame, %d angles/rev "
+           "-> %.1f s per turn\r\n",
+           TRI_ROWS, TRI_POINTS,
+           (TRI_POINTS + CC_MAX_POINTS - 1) / CC_MAX_POINTS, ROT_STEPS,
+           (double)ROT_STEPS / ROT_ADVANCE / ANIMATION_FPS);
+#endif
 }
 
-/* Only the rotating-triangle demo needs the sine table and rotate_into().
-   Compiling them out under USE_ANIMATION avoids -Wunused-function and
-   -Wunused-const-variable, both of which -Wall turns on for C. */
-#if !USE_ANIMATION
 /*
- * Q15 sine, one revolution in ROT_STEPS steps. A table rather than sinf() so
- * this pulls in no libm and the arithmetic is exactly reproducible.
- * cos(i) = sin(i + ROT_STEPS/4).
+ * Work that must happen every pass, not once per frame. Empty in the modes
+ * that generate their own points.
  */
-static const int16_t sin_q15[ROT_STEPS] = {
-         0,   3212,   6393,   9512,  12539,  15446,  18204,  20787,
-     23170,  25329,  27245,  28898,  30273,  31356,  32137,  32609,
-     32767,  32609,  32137,  31356,  30273,  28898,  27245,  25329,
-     23170,  20787,  18204,  15446,  12539,   9512,   6393,   3212,
-         0,  -3212,  -6393,  -9512, -12539, -15446, -18204, -20787,
-    -23170, -25329, -27245, -28898, -30273, -31356, -32137, -32609,
-    -32767, -32609, -32137, -31356, -30273, -28898, -27245, -25329,
-    -23170, -20787, -18204, -15446, -12539,  -9512,  -6393,  -3212,
-};
-
-/*
- * Rotate the base shape by `angle` steps and drop it on the screen centre.
- *
- * Point ORDER is untouched, which is the whole reason this is safe: the
- * span/connector parity that drives Z blanking survives rotation unchanged.
- *
- * Products peak at 116 * 32767, well inside int32. The clamp should never
- * fire -- the geometry is sized to the rotation circle -- but a coordinate
- * that wrapped past 255 would draw a bright line clean across the image, so
- * it is cheap insurance against a future resize that forgets the constraint.
- */
-static void rotate_into(cc1101_point_t *out, uint8_t angle)
+static inline void animation_service(void)
 {
-    const int32_t c = sin_q15[(angle + ROT_STEPS/4) & (ROT_STEPS - 1)];
-    const int32_t s = sin_q15[ angle                & (ROT_STEPS - 1)];
-
-    for (int i = 0; i < TRI_POINTS; i++) {
-        int32_t bx = base_x[i], by = base_y[i];
-        int32_t x = ((bx * c - by * s) >> 15) + ROT_CX;
-        int32_t y = ((bx * s + by * c) >> 15) + ROT_CY;
-
-        if (x <   0) x =   0;
-        if (x > 255) x = 255;
-        if (y <   0) y =   0;
-        if (y > 255) y = 255;
-
-        out[i].x = (uint8_t)x;
-        out[i].y = (uint8_t)y;
-    }
+#if ANIM_FROM_UART
+    /* Drain the DMA ring into decoded frames. Must run far more often than
+       once per frame period: nothing polls while cc1101_send_frame() is
+       blocking, so this call is the only thing keeping the 1 KB ring from
+       lapping itself. It is cheap and bounded -- see anim_stream.c. */
+    anim_stream_poll();
+#endif
 }
-#endif /* !USE_ANIMATION */
+
+/* Per-mode detail for the once-a-second report. The common counters are
+   printed by the caller. */
+static void animation_report(void)
+{
+#if ANIM_FROM_UART
+    /*
+     * Two different "the animation stutters" causes, and this line tells them
+     * apart:
+     *   late    -> the RADIO cannot deliver a frame in one period
+     *   starved -> the UART/PC cannot deliver a frame in one period
+     * They need opposite fixes, so never guess between them.
+     */
+    const anim_stream_stats_t *s = anim_stream_get_stats();
+    printf("  anim: late=%lu starved=%lu | rx: frames=%lu depth=%u "
+           "crc=%lu len=%lu ovf=%lu resync=%lu bytes=%lu\r\n",
+           (unsigned long)anim.frames_late,
+           (unsigned long)anim.frames_starved,
+           (unsigned long)s->frames_ok, (unsigned)s->depth,
+           (unsigned long)s->crc_errors, (unsigned long)s->len_errors,
+           (unsigned long)s->overflows, (unsigned long)s->resyncs,
+           (unsigned long)s->bytes);
+    /*
+     * bytes==0 means the DMA never moved anything, which is a different fault
+     * from "frames are arriving but failing". Three suspects, in the order
+     * they are worth checking:
+     *   1. animstream.py is not running, or is on the wrong COM port
+     *   2. --baud does not match huart2.Init.BaudRate
+     *   3. USART2_RX is not on DMA1 stream 5 channel 4 on this part
+     *      (RM0401 table 27) -- the one thing in anim_stream_init() that could
+     *      not be checked from the HAL headers
+     */
+    if (s->bytes == 0)
+        printf("  !! no UART bytes at all -- check animstream.py is running, "
+               "--baud matches, and DMA1_S5C4 is USART2_RX\r\n");
+
+#elif COMPILED_ANIMATION
+    printf("  anim: frame %u/%u  loops=%lu late=%lu\r\n",
+           (unsigned)anim.index, (unsigned)animation_clip.n_frames,
+           (unsigned long)anim.loops, (unsigned long)anim.frames_late);
+
+#else /* TRIANGLE_ANIMATION */
+    printf("  anim: angle %u/%d  late=%lu\r\n",
+           (unsigned)triangle_angle(), ROT_STEPS,
+           (unsigned long)anim.frames_late);
+#endif
+}
 /* USER CODE END 0 */
 
 /**
@@ -308,36 +287,10 @@ int main(void)
       printf("  !! PARTNUM==VERSION==0x%02X -- read path broken, not the radio.\r\n",
              partnum);
 
-  build_triangle();
-  printf("triangle: %d rows, %d points, %d packets/frame, %d angles/rev\r\n",
-         TRI_ROWS, TRI_POINTS,
-         (TRI_POINTS + CC_MAX_POINTS - 1) / CC_MAX_POINTS, ROT_STEPS);
-
-#if USE_ANIMATION
   /* Paced playback. The rate is wall-clock, not data-driven: every frame
      occupies the same period however many spans it holds, so playback speed
      no longer tracks picture complexity. See animation.h. */
-  static animation_t anim;
-
-#if ANIM_FROM_UART
-  /* Arm the DMA receiver BEFORE announcing anything, so the hello message and
-     the first window update leave with the receiver already listening. */
-  anim_stream_init(&huart2);
-  animation_init_source(&anim, anim_stream_next, anim_stream_release,
-                        NULL, ANIMATION_FPS);
-  printf("animation: streaming from UART @ %d fps (%lu ms/frame), "
-         "%d slots x %d points\r\n",
-         ANIMATION_FPS, (unsigned long)anim.period_ms,
-         ANIM_STREAM_SLOTS, ANIM_STREAM_MAX_POINTS);
-  printf("  run: python tools/animstream.py <clip.json> --baud %lu\r\n",
-         (unsigned long)huart2.Init.BaudRate);
-#else
-  animation_init(&anim, &animation_clip, ANIMATION_FPS);
-  printf("animation: %u frames from flash @ %d fps (%lu ms/frame)\r\n",
-         (unsigned)animation_clip.n_frames, ANIMATION_FPS,
-         (unsigned long)anim.period_ms);
-#endif
-#endif
+  animation_setup();
 
   /* USER CODE END 2 */
 
@@ -345,19 +298,14 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   /*
-   * ---- M13 stage A: prove the transmit path against the EXISTING Zybo ----
+   * The loop is the same in all three modes: service the source, offer it to
+   * the pacer, report once a second. Everything mode-specific was resolved at
+   * compile time in the helpers above.
    *
-   * Sends { 0xAA, 0x55, seq } -- byte-identical to TxSeq.sv -- so the Zybo's
-   * current unmodified bitstream receives it and lights LD3. This isolates
-   * "does the STM32 transmit" from "does the new packet format parse".
-   *
-   * On the Zybo: turn SW1 (sw_onlySend) OFF so radio B is configured, and
-   * trigger the ILA on b_rx_done. Expect b_rxbytes=0x06, b_len_byte=0x03,
-   * b_b0=0xAA, b_b1=0x55, b_crc_ok=1, b_pkt_ok=1, and b_b2 incrementing.
-   *
-   * Once that passes, switch SEND_POINTS to 1 for stage B. RxSeq.sv will NOT
-   * parse point packets until the M14 RTL work lands -- expect silence, not a
-   * wrong answer.
+   * If nothing appears on the scope, narrow it with the mode switch rather
+   * than by probing: TRIANGLE_ANIMATION removes the PC, the JSON and the
+   * inbound UART path from the picture entirely, so if the triangle draws and
+   * a streamed clip does not, the radio and the FPGA are both fine.
    */
 
   uint32_t sent = 0, failed = 0;
@@ -367,39 +315,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-#if USE_ANIMATION
-#if ANIM_FROM_UART
-    /* Drain the DMA ring into decoded frames. Must run far more often than
-       once per frame period: nothing polls while cc1101_send_frame() is
-       blocking, so this call is the only thing keeping the 1 KB ring from
-       lapping itself. It is cheap and bounded -- see anim_stream.c. */
-    anim_stream_poll();
-#endif
-    /* Non-blocking: returns immediately until the next frame is due, then
-       transmits exactly one frame. The wait is what fixes the cadence -- see
-       the pacing discussion in animation.h. */
+
+    /* Mode-specific upkeep -- draining the UART ring, in the streaming mode.
+       Nothing in the other two. */
+    animation_service();
+
+    /*
+     * Non-blocking: returns immediately until the next frame is due, then
+     * transmits exactly one frame. The wait is what fixes the cadence -- see
+     * the pacing discussion in animation.h.
+     *
+     * send_frame splits the frame into ceil(n/28) packets and marks the LAST
+     * one end-of-frame, which is what makes the receiver swap banks -- so the
+     * display only ever shows a complete frame, never half of one and half of
+     * the next. A dropped packet costs a few spans that are one frame stale
+     * rather than permanently wrong: the next pass rewrites every index.
+     */
     (void)animation_tick(&anim);
     sent   = anim.frames_sent;
     failed = anim.frames_failed;
-#else
-    bool ok;
-    /* One rotation step per frame. send_frame splits TRI_POINTS into
-       ceil(n/28) packets and marks the LAST one end-of-frame, which is what
-       makes the receiver swap banks -- so the display only ever shows a
-       complete angle, never half of one and half of the next.
-
-       A dropped packet now costs a few spans that are one FRAME stale rather
-       than permanently wrong: the next pass rewrites every index. That is the
-       self-healing property doing real work once the image moves. */
-    static uint8_t angle = 0;
-
-    rotate_into(tri, angle);
-    angle = (uint8_t)((angle + ROT_ADVANCE) & (ROT_STEPS - 1));
-
-    ok = cc1101_send_frame(tri, TRI_POINTS);
-
-    if (ok) sent++; else failed++;
-#endif
 
     /*
      * Report once a second, never from inside the transmit path.
@@ -410,76 +344,20 @@ int main(void)
     if (HAL_GetTick() - t_report >= 1000) {
         t_report = HAL_GetTick();
         const cc1101_tx_diag_t *d = cc1101_last_diag();
-        /* frames, not packets -- each pass is 5 transmits here, and the diag
-           describes only the last of them. */
+        /* frames, not packets -- each pass is several transmits here, and
+           the diag describes only the last of them. */
         printf("frames=%lu failed=%lu | txbytes=0x%02X marc=0x%02X "
                "sync=%d done=%d drained=%d timeout=%d\r\n",
                sent, failed, d->txbytes, d->marcstate,
                d->sync_seen, d->sent_ok, d->drained, d->timed_out);
-#if USE_ANIMATION
+
         /* late climbing steadily means the clip is too dense for the frame
            rate: the radio cannot deliver a frame inside its period. Lower
            ANIMATION_FPS, raise the link rate, or simplify the frames.
            tools/anim2c.py predicts this at conversion time. */
-#if ANIM_FROM_UART
-        /*
-         * Two different "the animation stutters" causes, and this line tells
-         * them apart:
-         *   late    -> the RADIO cannot deliver a frame in one period
-         *   starved -> the UART/PC cannot deliver a frame in one period
-         * They need opposite fixes, so never guess between them.
-         */
-        const anim_stream_stats_t *s = anim_stream_get_stats();
-        printf("  anim: late=%lu starved=%lu | rx: frames=%lu depth=%u "
-               "crc=%lu len=%lu ovf=%lu resync=%lu bytes=%lu\r\n",
-               (unsigned long)anim.frames_late,
-               (unsigned long)anim.frames_starved,
-               (unsigned long)s->frames_ok, (unsigned)s->depth,
-               (unsigned long)s->crc_errors, (unsigned long)s->len_errors,
-               (unsigned long)s->overflows, (unsigned long)s->resyncs,
-               (unsigned long)s->bytes);
-        /*
-         * bytes==0 means the DMA never moved anything, which is a different
-         * fault from "frames are arriving but failing". Three suspects, in
-         * the order they are worth checking:
-         *   1. animstream.py is not running, or is on the wrong COM port
-         *   2. --baud does not match huart2.Init.BaudRate
-         *   3. USART2_RX is not on DMA1 stream 5 channel 4 on this part
-         *      (RM0401 table 27) -- the one thing in anim_stream_init() that
-         *      could not be checked from the HAL headers
-         */
-        if (s->bytes == 0)
-            printf("  !! no UART bytes at all -- check animstream.py is "
-                   "running, --baud matches, and DMA1_S5C4 is USART2_RX\r\n");
-#else
-        printf("  anim: frame %u/%u  loops=%lu late=%lu\r\n",
-               (unsigned)anim.index, (unsigned)animation_clip.n_frames,
-               (unsigned long)anim.loops, (unsigned long)anim.frames_late);
-#endif
-#endif
+        animation_report();
     }
 
-    /*
-     * TRIANGLE PATH ONLY. Under USE_ANIMATION the cadence is set by
-     * animation_tick's deadline schedule instead, and this delay would just
-     * fight it -- see animation.h.
-     *
-     * Between FRAMES, not between packets -- send_frame already sent all five
-     * back to back. This is the rotation rate, so it is not free: every
-     * millisecond here is a millisecond of spin.
-     *
-     * At the config table's 500 kbps a 59-byte packet is ~1.1 ms of airtime,
-     * so a 5-packet frame is ~6 ms and a revolution takes ROT_STEPS * (6 +
-     * this). At 0 that is well under a second per turn -- much faster than the
-     * ~5 s it took at 38.4 kbps, so raise this if the spin is now a blur.
-     *
-     * The DISPLAY refresh is unaffected either way: the FPGA redraws PointRam
-     * continuously no matter how often the contents change, which is the whole
-     * point of decoupling the two rates.
-     */
-#if !USE_ANIMATION
-    HAL_Delay(0);
-#endif
   }
   /* USER CODE END 3 */
 }

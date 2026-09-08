@@ -1,7 +1,26 @@
 #!/usr/bin/env python3
 """
-vid2strands.py - convert a silhouette video (e.g. Bad Apple) into per-frame
+pointMaker.py - convert a silhouette video OR still image(s) into per-frame
 line segments for a vector / XY display.
+
+INPUT (positional) may be any of:
+    a video file          bad_apple.mp4          resampled to --fps
+    a single image        logo.png               -> a one-frame clip
+    a directory           frames/                -> every image in it, sorted
+    a glob                "frames/*.png"         -> the matches, sorted
+
+Image sequences and stills are NOT resampled - one file is one frame. --fps
+then only sets the playback rate recorded in the output and used by the
+preview. Sorting is natural, so frame2.png comes before frame10.png.
+
+A one-frame clip is still a valid clip: both tools/anim2c.py and
+tools/animstream.py accept it, so this is the way to put a static image on the
+scope.
+
+PNG TRANSPARENCY
+    A silhouette PNG usually carries its shape in the ALPHA channel, not in
+    luminance, so --alpha auto (the default) uses alpha as the figure whenever
+    the image has any transparent pixel. See --alpha for the other modes.
 
 Pipeline:
     frame -> grayscale -> threshold -> contour trace -> scale to 0..255
@@ -34,13 +53,130 @@ Requires: opencv-python, numpy
 """
 
 import argparse
+import glob as globmod
 import json
 import os
+import re
 import struct
 import sys
 
 import cv2
 import numpy as np
+
+
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff",
+              ".webp", ".ppm", ".pgm", ".gif"}
+
+
+# ----------------------------------------------------------------------------
+# input resolution: video, one image, a directory of images, or a glob
+# ----------------------------------------------------------------------------
+
+def natural_key(path):
+    """Sort frame2.png before frame10.png.
+
+    Plain lexicographic order puts frame10 first, which silently reverses or
+    shuffles a rendered sequence - and the result still looks like a plausible
+    animation, so the mistake is easy to miss."""
+    name = os.path.basename(path)
+    return [int(t) if t.isdigit() else t.lower()
+            for t in re.split(r"(\d+)", name)]
+
+
+def resolve_input(spec):
+    """Return ("video", path) or ("images", [paths...])."""
+    if os.path.isdir(spec):
+        files = [os.path.join(spec, f) for f in os.listdir(spec)
+                 if os.path.splitext(f)[1].lower() in IMAGE_EXTS]
+        if not files:
+            sys.exit(f"no images in directory: {spec}")
+        return "images", sorted(files, key=natural_key)
+
+    if any(c in spec for c in "*?["):
+        files = [f for f in globmod.glob(spec)
+                 if os.path.splitext(f)[1].lower() in IMAGE_EXTS]
+        if not files:
+            sys.exit(f"glob matched no images: {spec}")
+        return "images", sorted(files, key=natural_key)
+
+    if not os.path.exists(spec):
+        sys.exit(f"no such file: {spec}")
+
+    if os.path.splitext(spec)[1].lower() in IMAGE_EXTS:
+        return "images", [spec]
+
+    return "video", spec
+
+
+# ----------------------------------------------------------------------------
+# image loading
+# ----------------------------------------------------------------------------
+
+def _alpha_as_bgr(alpha, ink):
+    """Paint the alpha channel as hard black-on-white (or the reverse).
+
+    Returning a plain BGR image rather than a mask is what keeps the rest of
+    the pipeline untouched: frame_to_contours() thresholds it exactly like a
+    video frame, and every downstream stage is none the wiser. The polarity
+    follows --ink so the two ways of describing a silhouette stay consistent.
+    """
+    solid = alpha >= 128
+    figure, ground = (0, 255) if ink == "dark" else (255, 0)
+    img = np.where(solid, figure, ground).astype(np.uint8)
+    return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+
+def load_image(path, alpha_mode, ink):
+    """Read one still and return (BGR uint8 frame, how_it_was_interpreted)."""
+    img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        sys.exit(f"could not read image: {path}")
+
+    # 16-bit PNGs are common out of renderers; everything downstream is 8-bit.
+    if img.dtype == np.uint16:
+        img = (img // 257).astype(np.uint8)
+    elif img.dtype != np.uint8:
+        img = np.clip(img, 0, 255).astype(np.uint8)
+
+    if img.ndim == 2:                      # single-channel grayscale
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR), "gray"
+
+    if img.shape[2] == 4:
+        bgr, a = img[:, :, :3], img[:, :, 3]
+        mode = alpha_mode
+        if mode == "auto":
+            # Any transparency at all means the shape is being carried by the
+            # alpha channel. A silhouette exported as "black figure on
+            # transparent" thresholds to nothing once alpha is discarded,
+            # which reads as "the script found no contours" rather than as a
+            # transparency problem.
+            mode = "mask" if int(a.min()) < 255 else "ignore"
+
+        if mode == "mask":
+            return _alpha_as_bgr(a, ink), "alpha as mask"
+        if mode == "composite":
+            bg = 255 if ink == "dark" else 0
+            f = (a.astype(np.float32) / 255.0)[:, :, None]
+            flat = bgr.astype(np.float32) * f + bg * (1.0 - f)
+            return flat.astype(np.uint8), f"alpha composited over {bg}"
+        return bgr, "alpha ignored"
+
+    if img.shape[2] == 3:
+        return img, "bgr"
+
+    sys.exit(f"unsupported channel count {img.shape[2]} in {path}")
+
+
+def iter_images(paths, max_frames=None, alpha_mode="auto", ink="dark",
+                notes=None):
+    """Yield BGR frames, one per file. No resampling - a file is a frame."""
+    for i, p in enumerate(paths):
+        if max_frames and i >= max_frames:
+            break
+        frame, how = load_image(p, alpha_mode, ink)
+        if notes is not None:
+            notes.add(how)
+        yield frame
 
 
 # ----------------------------------------------------------------------------
@@ -266,21 +402,33 @@ def write_hex(path, binpath):
         f.write("\n".join(f"{b:02x}" for b in data) + "\n")
 
 
+def draw_frame(pts, grid, scale=3, flip_y=True):
+    """One frame rendered straight from the emitted pairs - this validates the
+    OUTPUT data, not the intermediate polygons."""
+    size = (grid + 1) * scale
+    img = np.zeros((size, size, 3), np.uint8)
+
+    def px(p):
+        y = (grid - p[1]) if flip_y else p[1]
+        return (p[0] * scale, y * scale)
+
+    for i in range(0, len(pts) - 1, 2):
+        cv2.line(img, px(pts[i]), px(pts[i + 1]), (80, 255, 120), 1, cv2.LINE_AA)
+    return img
+
+
 def render_preview(path, frames_pts, grid, fps, scale=3, flip_y=True):
-    """Render straight from the emitted pairs - this validates the output data,
-    not the intermediate polygons."""
     size = (grid + 1) * scale
     vw = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (size, size))
     for pts in frames_pts:
-        img = np.zeros((size, size, 3), np.uint8)
-        def px(p):
-            y = (grid - p[1]) if flip_y else p[1]
-            return (p[0] * scale, y * scale)
-        for i in range(0, len(pts) - 1, 2):
-            a, b = px(pts[i]), px(pts[i + 1])
-            cv2.line(img, a, b, (80, 255, 120), 1, cv2.LINE_AA)
-        vw.write(img)
+        vw.write(draw_frame(pts, grid, scale, flip_y))
     vw.release()
+
+
+def render_preview_png(path, pts, grid, scale=3, flip_y=True):
+    """A one-frame clip gets a still preview. An mp4 holding a single frame is
+    technically valid and useless -- most players show nothing at all."""
+    cv2.imwrite(path, draw_frame(pts, grid, scale, flip_y))
 
 
 # ----------------------------------------------------------------------------
@@ -288,7 +436,9 @@ def render_preview(path, frames_pts, grid, fps, scale=3, flip_y=True):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("video")
+    ap.add_argument("input", metavar="INPUT",
+                    help="video file, image file, directory of images, "
+                         "or a quoted glob")
     ap.add_argument("-o", "--out", default="strands_out")
     ap.add_argument("--budget", type=int, default=180,
                     help="max segments per frame (points per frame = 2x this)")
@@ -298,6 +448,14 @@ def main():
     ap.add_argument("--ink", choices=["dark", "light"], default="dark",
                     help="which side of the threshold is the figure")
     ap.add_argument("--threshold", type=int, default=127)
+    ap.add_argument("--alpha", choices=["auto", "mask", "composite", "ignore"],
+                    default="auto",
+                    help="how to treat a PNG alpha channel. auto: use alpha as "
+                         "the figure if the image has any transparency, else "
+                         "ignore it. mask: always use alpha, ignoring colour "
+                         "(--threshold does not apply). composite: flatten "
+                         "onto a background chosen by --ink, then threshold "
+                         "normally. ignore: discard alpha")
     ap.add_argument("--min-area", type=float, default=6.0,
                     help="drop blobs smaller than this, in output units^2")
     ap.add_argument("--close-px", type=int, default=3,
@@ -315,9 +473,20 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     flip_y = args.origin == "bottom-left"
 
+    kind, src = resolve_input(args.input)
+    alpha_notes = set()
+    if kind == "video":
+        frames = iter_frames(src, args.fps, args.max_frames or None)
+        source_desc = f"video, resampled to {args.fps} fps"
+    else:
+        frames = iter_images(src, args.max_frames or None, args.alpha,
+                             args.ink, alpha_notes)
+        n = min(len(src), args.max_frames) if args.max_frames else len(src)
+        source_desc = f"{n} image file(s), one frame each"
+    print(f"input: {source_desc}")
+
     frames_pts, stats = [], []
-    for i, frame in enumerate(iter_frames(args.video, args.fps,
-                                          args.max_frames or None)):
+    for i, frame in enumerate(frames):
         cnts = frame_to_contours(frame, args.grid, not args.stretch, args.ink,
                                  args.threshold, args.min_area, args.close_px,
                                  flip_y)
@@ -346,15 +515,24 @@ def main():
         binpath = os.path.join(args.out, "strands.bin")
         write_binary(binpath, frames_pts, args.grid, args.fps)
         write_hex(os.path.join(args.out, "strands.hex"), binpath)
+    preview = None
     if not args.no_preview:
-        render_preview(os.path.join(args.out, "preview.mp4"),
-                       frames_pts, args.grid, args.fps, flip_y=flip_y)
+        if len(frames_pts) == 1:
+            preview = os.path.join(args.out, "preview.png")
+            render_preview_png(preview, frames_pts[0], args.grid, flip_y=flip_y)
+        else:
+            preview = os.path.join(args.out, "preview.mp4")
+            render_preview(preview, frames_pts, args.grid, args.fps,
+                           flip_y=flip_y)
 
     segs = [s["segments"] for s in stats]
     clamped = [s for s in stats if s["clamped"]]
     worst = sorted(stats, key=lambda s: -s["segments"])[:10]
     saved = sum(s["travel_unordered"] - s["travel"] for s in stats)
     lines = [
+        f"source            {source_desc}",
+    ] + ([f"alpha             {', '.join(sorted(alpha_notes))}"]
+         if alpha_notes else []) + [
         f"frames            {len(stats)}  @ {args.fps} fps  "
         f"({len(stats)/args.fps:.1f}s)",
         f"segments/frame    min {min(segs)}  mean {sum(segs)/len(segs):.1f}  max {max(segs)}",
@@ -364,6 +542,7 @@ def main():
         f"- detail truncated",
         f"json size         {os.path.getsize(jsonpath)} bytes",
         f"travel saved      {saved:.0f} units total by reordering",
+    ] + ([f"preview           {os.path.basename(preview)}"] if preview else []) + [
         "",
         "heaviest frames:",
     ] + [f"  {s['frame']:5d}  segs={s['segments']:4d}  pts={s['points']:4d}"

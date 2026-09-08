@@ -2,8 +2,9 @@
 ../Core/Src/anim_stream.c:96:24:dma_head	16	static
 ../Core/Src/anim_stream.c:106:13:send_ctl	24	static
 ../Core/Src/anim_stream.c:115:6:anim_stream_init	24	static
-../Core/Src/anim_stream.c:193:13:parse_byte	16	static
-../Core/Src/anim_stream.c:324:6:anim_stream_poll	16	static
-../Core/Src/anim_stream.c:353:23:anim_stream_next	16	static
-../Core/Src/anim_stream.c:361:6:anim_stream_release	16	static
-../Core/Src/anim_stream.c:376:28:anim_stream_get_stats	4	static
+../Core/Src/anim_stream.c:202:13:stream_reset	8	static
+../Core/Src/anim_stream.c:217:13:parse_byte	16	static
+../Core/Src/anim_stream.c:382:6:anim_stream_poll	16	static
+../Core/Src/anim_stream.c:411:23:anim_stream_next	16	static
+../Core/Src/anim_stream.c:419:6:anim_stream_release	16	static
+../Core/Src/anim_stream.c:434:28:anim_stream_get_stats	4	static

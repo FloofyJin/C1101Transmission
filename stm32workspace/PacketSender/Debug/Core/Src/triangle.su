@@ -1,0 +1,5 @@
+../Core/Src/triangle.c:39:6:triangle_init	40	static
+../Core/Src/triangle.c:88:13:rotate_into	48	static
+../Core/Src/triangle.c:108:23:triangle_next	16	static
+../Core/Src/triangle.c:116:6:triangle_done	16	static
+../Core/Src/triangle.c:122:9:triangle_angle	4	static
