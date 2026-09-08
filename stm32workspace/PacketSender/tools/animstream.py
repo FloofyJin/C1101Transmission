@@ -39,13 +39,6 @@ it, and SLOTS consecutive drops stall the link permanently. The board now
 advances the window itself when it rejects a frame for LENGTH, and STALL_TIMEOUT
 below covers the CRC case, where the sequence byte cannot be trusted.
 
-BLANK FRAMES
-------------
-A frame with zero points is legal and means "nothing to draw". The board
-consumes it, skips the radio, and the picture holds for that period. Bad Apple
-has 44 of them, all in runs -- rejecting zero was what triggered the deadlock
-above.
-
 USAGE
 -----
     pip install pyserial
